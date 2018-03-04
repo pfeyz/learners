@@ -4,15 +4,15 @@ use hypothesis::Hypothesis;
 use learner::{Learner, Environment};
 use domain::{Grammar, Sentence};
 
-pub struct ProfiledLearner<H: Hypothesis>{
-    learner: Box<Learner<H>>,
+pub struct ProfiledLearner{
+    learner: Box<Learner>,
     target: Grammar,
     consumed: u64,
     start_time: SystemTime,
 }
 
-impl<H: Hypothesis> ProfiledLearner<H> {
-    fn new(learner: Box<Learner<H>>, target: Grammar) -> Self {
+impl ProfiledLearner {
+    fn new(learner: Box<Learner>, target: Grammar) -> Self {
         ProfiledLearner {
             learner: learner,
             target: target,

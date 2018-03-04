@@ -1,5 +1,5 @@
-use learner::{Learner, Environment, Consumer};
-use domain::{Grammar, Sentence, NUM_PARAMS};
+use learner::{Learner, Environment};
+use domain::{Grammar, Sentence, NUM_PARAMS, LanguageDomain};
 use hypothesis::{WeightedHypothesis};
 
 pub struct VariationalLearner {
@@ -7,8 +7,8 @@ pub struct VariationalLearner {
 }
 
 impl VL for VariationalLearner {
-    fn reward(&mut self, _: &Environment, gram: &Grammar, sent: &Sentence){
-        unimplemented!();
+    fn hypothesis(&self) -> &WeightedHypothesis {
+        &self.hypothesis
     }
 }
 
@@ -17,13 +17,19 @@ pub struct RewardOnlyVariationalLearner {
 }
 
 impl VL for RewardOnlyVariationalLearner {
+    fn hypothesis(&self) -> &WeightedHypothesis {
+        &self.hypothesis
+    }
     fn reward(&mut self, _: &Environment, gram: &Grammar, sent: &Sentence){
         unimplemented!();
     }
 }
 
-trait VL: Learner<WeightedHypothesis> {
-    fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence);
+trait VL: Learner {
+    fn hypothesis(&self) -> &WeightedHypothesis;
+    fn reward(&mut self, _: &Environment, gram: &Grammar, sent: &Sentence){
+        unimplemented!();
+    }
     fn punish(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
     }
     fn vl_learn(&mut self, env: &Environment, sent: &Sentence){
@@ -49,11 +55,12 @@ impl VariationalLearner {
     pub fn new() -> VariationalLearner {
         VariationalLearner { hypothesis: WeightedHypothesis::new() }
     }
+    pub fn boxed() -> Box<Learner> {
+        Box::new(VariationalLearner::new())
+    }
 }
 
-impl Learner<WeightedHypothesis> for VariationalLearner {
-    fn hypothesis(&self) -> &WeightedHypothesis { &self.hypothesis }
-    fn hypothesis_mut(&mut self) -> &mut WeightedHypothesis { &mut self.hypothesis }
+impl Learner for VariationalLearner {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
         self.vl_learn(env, sent);
     }
@@ -63,24 +70,13 @@ impl RewardOnlyVariationalLearner {
     pub fn new() -> RewardOnlyVariationalLearner {
         RewardOnlyVariationalLearner { hypothesis: WeightedHypothesis::new() }
     }
+    pub fn boxed() -> Box<Learner> {
+        Box::new(RewardOnlyVariationalLearner::new())
+    }
 }
 
-impl Learner<WeightedHypothesis> for RewardOnlyVariationalLearner {
-    fn hypothesis(&self) -> &WeightedHypothesis { &self.hypothesis }
-    fn hypothesis_mut(&mut self) -> &mut WeightedHypothesis { &mut self.hypothesis }
+impl Learner for RewardOnlyVariationalLearner {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
         self.vl_learn(env, sent);
-    }
-}
-
-impl Consumer for VariationalLearner {
-    fn consume(&mut self, env: &Environment, sent: &Sentence){
-        self.learn(env, sent);
-    }
-}
-
-impl Consumer for RewardOnlyVariationalLearner {
-    fn consume(&mut self, env: &Environment, sent: &Sentence){
-        self.learn(env, sent);
     }
 }

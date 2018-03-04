@@ -22,7 +22,7 @@ pub enum Trigger {
     Irrelevant
 }
 
-struct Colag {}
+pub struct Colag {}
 impl LanguageDomain for Colag {
     fn language(&self, g: &Grammar) -> &Sentence {
         unimplemented!();

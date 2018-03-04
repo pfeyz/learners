@@ -1,14 +1,12 @@
-use learner::{Learner, Consumer, Environment};
-use domain::{Grammar, Sentence, IllegalGrammar};
+use learner::{Learner, Environment};
+use domain::{Grammar, Sentence, IllegalGrammar, LanguageDomain};
 use hypothesis::{SimpleHypothesis};
 
 pub struct TriggerLearner {
     hypothesis: SimpleHypothesis,
 }
 
-impl Learner<SimpleHypothesis> for TriggerLearner {
-    fn hypothesis(&self) -> &SimpleHypothesis { &self.hypothesis }
-    fn hypothesis_mut(&mut self) -> &mut SimpleHypothesis { &mut self.hypothesis }
+impl Learner for TriggerLearner {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
         let parses = env.domain.parses(&self.hypothesis.grammar, sent);
         match parses {
@@ -21,14 +19,11 @@ impl Learner<SimpleHypothesis> for TriggerLearner {
     }
 }
 
-impl Consumer for TriggerLearner {
-    fn consume(&mut self, env: &Environment, sent: &Sentence){
-        self.learn(env, sent);
-    }
-}
-
 impl TriggerLearner {
     pub fn new() -> Self {
         TriggerLearner { hypothesis: SimpleHypothesis {grammar: 0} }
+    }
+    pub fn boxed() -> Box<Learner> {
+        Box::new(TriggerLearner { hypothesis: SimpleHypothesis {grammar: 0} })
     }
 }
