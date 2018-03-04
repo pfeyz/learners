@@ -1,0 +1,6 @@
+[package]
+name = "learner-design"
+version = "0.1.0"
+authors = ["Paul Feitzinger <paul@pfeyz.com>"]
+
+[dependencies]
