@@ -5,23 +5,21 @@ use domain::{Grammar, NUM_PARAMS};
 type ParameterWeights = [f64; NUM_PARAMS];
 type FuzzyGrammar = ParameterWeights;
 
-pub trait Hypothesis {
-    fn reset(&mut self);
+pub enum Theory<'a> {
+    Simple(&'a SimpleHypothesis),
+    Weighted(&'a WeightedHypothesis)
 }
 
+pub trait Hypothesis {}
+
+#[derive(Debug)]
 pub struct SimpleHypothesis { pub grammar: Grammar }
+
+#[derive(Debug)]
 pub struct WeightedHypothesis { pub weights: ParameterWeights }
 
-impl Hypothesis for SimpleHypothesis {
-    fn reset(&mut self){
-        self.grammar = 0;
-    }
-}
-impl Hypothesis for WeightedHypothesis {
-    fn reset(&mut self){
-        *self = WeightedHypothesis::new();
-    }
-}
+impl Hypothesis for SimpleHypothesis {}
+impl Hypothesis for WeightedHypothesis {}
 
 impl WeightedHypothesis {
     pub fn new() -> Self {

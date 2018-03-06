@@ -7,7 +7,7 @@ pub struct VariationalLearner {
 }
 
 impl VL for VariationalLearner {
-    fn hypothesis(&self) -> &WeightedHypothesis {
+    fn vl_hypothesis(&self) -> &WeightedHypothesis {
         &self.hypothesis
     }
 }
@@ -17,7 +17,7 @@ pub struct RewardOnlyVariationalLearner {
 }
 
 impl VL for RewardOnlyVariationalLearner {
-    fn hypothesis(&self) -> &WeightedHypothesis {
+    fn vl_hypothesis(&self) -> &WeightedHypothesis {
         &self.hypothesis
     }
     fn reward(&mut self, _: &Environment, gram: &Grammar, sent: &Sentence){
@@ -26,7 +26,7 @@ impl VL for RewardOnlyVariationalLearner {
 }
 
 trait VL: Learner {
-    fn hypothesis(&self) -> &WeightedHypothesis;
+    fn vl_hypothesis(&self) -> &WeightedHypothesis;
     fn reward(&mut self, _: &Environment, gram: &Grammar, sent: &Sentence){
         unimplemented!();
     }
@@ -34,7 +34,7 @@ trait VL: Learner {
     }
     fn vl_learn(&mut self, env: &Environment, sent: &Sentence){
         loop {
-            let g = env.domain.random_weighted_grammar(self.hypothesis().weights);
+            let g = env.domain.random_weighted_grammar(self.vl_hypothesis().weights);
             match env.domain.parses(&g, sent) {
                 Ok(parsed) => {
                     if parsed {

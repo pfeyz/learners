@@ -1,6 +1,6 @@
 use learner::{Learner, Environment};
 use domain::{Grammar, Sentence, IllegalGrammar, LanguageDomain};
-use hypothesis::{SimpleHypothesis};
+use hypothesis::{SimpleHypothesis, Theory};
 
 pub struct TriggerLearner {
     hypothesis: SimpleHypothesis,
@@ -16,6 +16,9 @@ impl Learner for TriggerLearner {
             },
             _ => ()  // our hypothesis worked, let's keep it.
         }
+    }
+    fn theory(&self) -> Theory {
+        Theory::Simple(&self.hypothesis)
     }
 }
 
