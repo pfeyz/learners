@@ -15,6 +15,9 @@ pub struct Environment {
 
 pub trait Learner {
     fn learn(&mut self, &Environment, &Sentence);
+    fn converged(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug)]
