@@ -6,6 +6,9 @@ use domain::{Grammar, NUM_PARAMS};
 type ParameterWeights = [f64; NUM_PARAMS];
 type FuzzyGrammar = ParameterWeights;
 
+// TODO: maybe add a second Grammar field. When we ask the learner for their
+// theory they can just tell us a grammar, and we can optionally inspect their
+// specific hypothesis.
 pub enum Theory<'a> {
     Simple(&'a SimpleHypothesis),
     Weighted(&'a WeightedHypothesis)
