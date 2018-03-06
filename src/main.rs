@@ -12,8 +12,7 @@ mod hypothesis;
 mod profiling;
 
 use domain::{Colag, Grammar, LanguageDomain, Sentence};
-use learner::{Learner, TriggerLearner, VariationalLearner, RewardOnlyVariationalLearner,
-              Environment};
+use learner::{Learner, TriggerLearner, VariationalLearner, RewardOnlyVariationalLearner, NonDefaultsLearner, Environment};
 use profiling::ProfiledLearner;
 use hypothesis::{Hypothesis, Theory};
 
@@ -41,7 +40,7 @@ fn watch_learner<'a>(name: &str, id: u64, num_sentences: &u64, env: &Environment
     for n in 0..*num_sentences {
         let sent = rng.choose(language).unwrap();
         learner.learn(env, sent);
-        if n % (num_sentences / 1000) == 0 || learner.converged() {
+        if n % (num_sentences / 100) == 0 || learner.converged() {
             match learner.theory() {
                 Theory::Simple(h) => println!("{}, {}, {}, {}, ", name, id, n, h),
                 Theory::Weighted(h) => println!("{}, {}, {}, {},", name, id, n, h)
@@ -58,17 +57,17 @@ fn get_learner(name: &str) -> Option<LearnerFactory> {
         "tla" => Some(TriggerLearner::boxed),
         "vl" => Some(VariationalLearner::boxed),
         "rovl" => Some(RewardOnlyVariationalLearner::boxed),
+        "ndl" => Some(NonDefaultsLearner::boxed),
         _ => None
     }
 }
 
 fn main() {
-    let name = "vl";
-    let colag = Colag::from_file("../../irrel_ambig/data/COLAG_2011_ids.txt")
+    let colag = Colag::from_file("./data/COLAG_2011_ids.txt")
         .unwrap()
-        .read_triggers("../../irrel_ambig/data/irrelevance-output.txt")
+        .read_triggers("./data/irrelevance-output.txt")
         .unwrap()
-        .read_surface_forms("../../irrel_ambig/data/COLAG_2011_sents.txt")
+        .read_surface_forms("./data/COLAG_2011_sents.txt")
         .unwrap();
 
     let env = Arc::new(Environment { domain: colag });
@@ -83,15 +82,15 @@ fn main() {
                 .expect(&format!("Illegal grammar: {}", target))
                 .iter()
                 .collect();
-            for iter in 0..100 {
-                for name in vec!["vl", "rovl"]{
+            for iter in 0..50 {
+                for name in vec!["ndl", "vl", "rovl"]{
                     if let Some(factory) = get_learner(&name) {
-                        watch_learner(name, iter, &5_000_000, &env, &language[..], factory);
-                        // let (n, learner) = learn_language(&2_000_000, &env, &language[..], factory);
-                        // match learner.theory() {
-                        //     Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
-                        //     Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
-                        // }
+                        // watch_learner(name, iter, &500_000, &env, &language[..], factory);
+                        let (n, learner) = learn_language(&500_000, &env, &language[..], factory);
+                        match learner.theory() {
+                            Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
+                            Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
+                        }
                     } else {
                         println!("`{}` is not a valid learner name", name);
                     }

@@ -15,8 +15,8 @@ pub type TriggerVec = [Trigger; NUM_PARAMS];
 
 #[derive(Debug)]
 pub struct SurfaceForm {
-    illoc: String,
-    words: String
+    pub illoc: String,
+    pub words: String
 }
 
 pub trait LanguageDomain {
@@ -53,7 +53,7 @@ impl LanguageDomain for Colag {
         self.language.get(g).ok_or_else({|| IllegalGrammar {grammar: *g } })
     }
     fn triggers(&self, s: &Sentence) -> &TriggerVec {
-        unimplemented!();
+        self.trigger.get(s).unwrap()
     }
     fn parses(&self, g: &Grammar, s: &Sentence) -> Result<bool, IllegalGrammar> {
         match self.language.get(g) {

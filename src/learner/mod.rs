@@ -5,9 +5,11 @@ use domain::{NUM_PARAMS, LanguageDomain, Grammar, Sentence, Colag};
 
 pub mod trigger;
 pub mod variational;
+pub mod ndl;
 
 pub use self::trigger::TriggerLearner;
 pub use self::variational::{VariationalLearner, RewardOnlyVariationalLearner};
+pub use self::ndl::NonDefaultsLearner;
 
 pub struct Environment {
     pub domain: Colag
