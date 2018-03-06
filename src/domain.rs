@@ -7,6 +7,7 @@ pub trait LanguageDomain {
     fn language(&self, &Grammar) -> &Sentence;
     fn triggers(&self, &Sentence) -> &TriggerVec;
     fn parses(&self, &Grammar, &Sentence) -> Result<bool, IllegalGrammar>;
+    fn random_sentence(&self, target: &Grammar) -> &Sentence;
     fn random_grammar(&self) -> Grammar;
     fn random_weighted_grammar(&self, [f64; NUM_PARAMS]) -> Grammar;
 }
@@ -38,6 +39,9 @@ impl LanguageDomain for Colag {
     }
     fn random_weighted_grammar(&self, weights: [f64; NUM_PARAMS])
                                -> Grammar {
+        unimplemented!();
+    }
+    fn random_sentence(&self, target: &Grammar) -> &Sentence {
         unimplemented!();
     }
 }
