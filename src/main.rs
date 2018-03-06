@@ -67,7 +67,10 @@ fn main() {
     let colag = Colag::from_file("../../irrel_ambig/data/COLAG_2011_ids.txt")
         .unwrap()
         .read_triggers("../../irrel_ambig/data/irrelevance-output.txt")
+        .unwrap()
+        .read_surface_forms("../../irrel_ambig/data/COLAG_2011_sents.txt")
         .unwrap();
+
     let env = Arc::new(Environment { domain: colag });
     let mut handles = Vec::new();
     for i in 0..1 {

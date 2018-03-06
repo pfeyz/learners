@@ -24,7 +24,7 @@ impl VL for RewardOnlyVariationalLearner {
         &mut self.hypothesis
     }
     fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
-        let triggers = env.domain.trigger.get(&sent).unwrap();
+        let triggers = env.domain.triggers(&sent);
         let ref mut hyp = self.vl_hypothesis();
         let ref mut weights = hyp.weights;
         for param in 0..NUM_PARAMS {

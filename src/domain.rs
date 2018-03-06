@@ -13,8 +13,15 @@ pub type Grammar = u16;
 pub type Sentence = u32;
 pub type TriggerVec = [Trigger; NUM_PARAMS];
 
+#[derive(Debug)]
+pub struct SurfaceForm {
+    illoc: String,
+    words: String
+}
+
 pub trait LanguageDomain {
     fn language(&self, g: &Grammar) -> Result<&HashSet<Sentence>, IllegalGrammar>;
+    fn surface_form(&self, g: &Sentence) -> &SurfaceForm;
     fn triggers(&self, &Sentence) -> &TriggerVec;
     fn parses(&self, &Grammar, &Sentence) -> Result<bool, IllegalGrammar>;
     fn random_grammar(&self) -> &Grammar;
@@ -35,9 +42,10 @@ pub enum Trigger {
 type ColagTsvLine = (u16, u32, u32);
 
 pub struct Colag {
-    pub language: HashMap<Grammar, HashSet<u32>>,
-    pub grammars: Vec<Grammar>,
-    pub trigger: HashMap<Sentence, TriggerVec>
+    language: HashMap<Grammar, HashSet<u32>>,
+    grammars: Vec<Grammar>,
+    trigger: HashMap<Sentence, TriggerVec>,
+    surface_form: HashMap<Sentence, SurfaceForm>
 }
 
 impl LanguageDomain for Colag {
@@ -53,6 +61,9 @@ impl LanguageDomain for Colag {
             Some(sents) => Ok(sents.contains(s))
         }
     }
+    fn surface_form(&self, s: &Sentence) -> &SurfaceForm {
+        self.surface_form.get(s).unwrap()
+    }
     fn random_grammar(&self) -> &Grammar {
         let mut rng = rand::thread_rng();
         rng.choose(&self.grammars).unwrap()
@@ -64,7 +75,8 @@ impl Colag {
         let lang = HashMap::new();
         Colag { language: lang,
                 grammars: Vec::new(),
-                trigger: HashMap::new()
+                trigger: HashMap::new(),
+                surface_form: HashMap::new()
         }
     }
 
@@ -140,6 +152,20 @@ impl Colag {
         Ok(self)
     }
 
+    pub fn read_surface_forms(mut self, filename: &str) -> Result<Self, Box<Error>> {
+        let mut rdr = csv::ReaderBuilder::new()
+            .delimiter(b'\t')
+            .from_path(filename)
+            .expect(filename);
+
+        for result in rdr.deserialize() {
+            let (sentence, illoc, form): (Sentence, String, String) = result?;
+            self.surface_form.insert(sentence,
+                                     SurfaceForm { illoc: illoc.trim().to_string(),
+                                                   words: form.trim().to_string() });
+        }
+        Ok(self)
+    }
 }
 
 
