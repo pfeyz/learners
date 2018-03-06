@@ -152,6 +152,54 @@ impl Colag {
         Ok(self)
     }
 
+    fn sentence_generators(&self) -> HashMap<&Sentence, &Grammar> {
+        unimplemented!();
+    }
+
+    fn all_sentences(&self) -> HashSet<Sentence> {
+        let mut all_sents: HashSet<Sentence> = HashSet::new();
+        for sents in self.language.values() {
+            all_sents.extend(sents);
+        }
+        all_sents
+    }
+
+    fn unambiguous_trigger(&self, sent: &Sentence, param: usize) -> Result<bool, Vec<Grammar>> {
+        unimplemented!();
+    }
+
+    fn illegal_grammar(&self, g: &Grammar) -> bool {
+        unimplemented!();
+    }
+
+    fn ambig_or_irrel(&self, generators: Vec<Grammar>, param: usize) -> Trigger {
+        for generator in generators.iter() {
+            let min_pair = toggled(&generator, param);
+            if !generators.contains(&&min_pair) && !self.illegal_grammar(&&min_pair){
+                return Trigger::Ambiguous
+            }
+        }
+        Trigger::Irrelevant
+    }
+
+    pub fn gen_triggers(&mut self) {
+        let sentences = self.all_sentences().into_iter();
+        for sentence in sentences {
+            let mut triggers = unsafe {
+                let mut triggers: TriggerVec = mem::uninitialized();
+                for param in 0..NUM_PARAMS {
+                    triggers[param] = match self.unambiguous_trigger(&sentence, param) {
+                        Ok(true) => Trigger::On,
+                        Ok(false) => Trigger::Off,
+                        Err(generators) => self.ambig_or_irrel(generators, param)
+                    };
+                }
+                triggers
+            };
+            self.trigger.insert(sentence, triggers);
+        }
+    }
+
     pub fn read_surface_forms(mut self, filename: &str) -> Result<Self, Box<Error>> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
@@ -168,6 +216,9 @@ impl Colag {
     }
 }
 
+fn toggled(grammar: &Grammar, param_num: usize) -> Grammar {
+    unimplemented!();
+}
 
 /// Returns parameter # `param_num` from `grammar`.
 pub fn get_param(grammar: &Grammar, param_num: usize) -> Grammar {
