@@ -52,7 +52,7 @@ trait VL: Learner {
         }
         true
     }
-    fn reward(&mut self, _: &Environment, gram: &Grammar, sent: &Sentence){
+    fn reward(&mut self, _: &Environment, gram: &Grammar, _: &Sentence){
         let ref mut hyp = self.vl_hypothesis();
         let ref mut weights = hyp.weights;
         for param in 0..NUM_PARAMS {
@@ -63,7 +63,7 @@ trait VL: Learner {
             }
         }
     }
-    fn punish(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
+    fn punish(&mut self, _env: &Environment, _gram: &Grammar, _sent: &Sentence){
     }
     fn vl_learn(&mut self, env: &Environment, sent: &Sentence){
         loop {

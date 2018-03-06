@@ -1,20 +1,16 @@
 extern crate rand;
 use rand::Rng;
 
-use std::env;
 use std::thread;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 mod domain;
 mod learner;
 mod hypothesis;
-mod profiling;
 
-use domain::{Colag, Grammar, LanguageDomain, Sentence};
-use learner::{Learner, TriggerLearner, VariationalLearner, RewardOnlyVariationalLearner, NonDefaultsLearner, Environment};
-use profiling::ProfiledLearner;
-use hypothesis::{Hypothesis, Theory};
+use domain::{Colag, LanguageDomain, Sentence};
+use learner::{Learner, Environment};
+use hypothesis::{Theory};
 
 type LearnerFactory = fn() -> Box<Learner>;
 
@@ -52,12 +48,12 @@ fn watch_learner<'a>(name: &str, id: u64, num_sentences: &u64, env: &Environment
     }
 }
 
-fn get_learner(name: &str) -> Option<LearnerFactory> {
+fn get_learner_factory(name: &str) -> Option<LearnerFactory> {
     match name {
-        "tla" => Some(TriggerLearner::boxed),
-        "vl" => Some(VariationalLearner::boxed),
-        "rovl" => Some(RewardOnlyVariationalLearner::boxed),
-        "ndl" => Some(NonDefaultsLearner::boxed),
+        "tla" => Some(learner::TriggerLearner::boxed),
+        "vl" => Some(learner::VariationalLearner::boxed),
+        "rovl" => Some(learner::RewardOnlyVariationalLearner::boxed),
+        "ndl" => Some(learner::NonDefaultsLearner::boxed),
         _ => None
     }
 }
@@ -72,7 +68,7 @@ fn main() {
 
     let env = Arc::new(Environment { domain: colag });
     let mut handles = Vec::new();
-    for i in 0..1 {
+    for _ in 0..1 {
         let env = env.clone();
         handles.push(thread::spawn(move|| {
             let target = 611;

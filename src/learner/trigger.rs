@@ -1,5 +1,5 @@
 use learner::{Learner, Environment};
-use domain::{Grammar, Sentence, IllegalGrammar, LanguageDomain};
+use domain::{Sentence, IllegalGrammar, LanguageDomain};
 use hypothesis::{SimpleHypothesis, Theory};
 
 pub struct TriggerLearner {

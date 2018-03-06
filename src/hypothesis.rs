@@ -1,7 +1,7 @@
 use std::mem;
 use std::fmt;
 
-use domain::{Grammar, NUM_PARAMS, Colag};
+use domain::{Grammar, NUM_PARAMS};
 
 type ParameterWeights = [f64; NUM_PARAMS];
 type FuzzyGrammar = ParameterWeights;

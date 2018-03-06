@@ -1,7 +1,5 @@
-use std::time::{Duration, SystemTime};
-
-use hypothesis::{Hypothesis, Theory};
-use domain::{NUM_PARAMS, LanguageDomain, Grammar, Sentence, Colag};
+use hypothesis::{Theory};
+use domain::{Sentence, Colag};
 
 pub mod trigger;
 pub mod variational;
@@ -21,9 +19,4 @@ pub trait Learner {
         false
     }
     fn theory(&self) -> Theory;
-}
-
-#[derive(Debug)]
-pub struct LearnerReport {
-    hypothesis: String,
 }
