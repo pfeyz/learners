@@ -4,10 +4,10 @@ use hypothesis::{Hypothesis, Theory};
 use domain::{NUM_PARAMS, LanguageDomain, Grammar, Sentence, Colag};
 
 pub mod trigger;
-// pub mod variational;
+pub mod variational;
 
 pub use self::trigger::TriggerLearner;
-// pub use self::variational::{VariationalLearner, RewardOnlyVariationalLearner};
+pub use self::variational::{VariationalLearner, RewardOnlyVariationalLearner};
 
 pub struct Environment {
     pub domain: Colag
@@ -15,7 +15,7 @@ pub struct Environment {
 
 pub trait Learner {
     fn learn(&mut self, &Environment, &Sentence);
-    fn converged(&self) -> bool {
+    fn converged(&mut self) -> bool {
         false
     }
     fn theory(&self) -> Theory;
