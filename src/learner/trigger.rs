@@ -4,7 +4,7 @@ use hypothesis::{SimpleHypothesis, Theory};
 
 pub struct TriggerLearner {
     hypothesis: SimpleHypothesis,
-    last_change: u32
+    clean_parses: u32
 }
 
 impl Learner for TriggerLearner {
@@ -12,12 +12,18 @@ impl Learner for TriggerLearner {
         let parses = env.domain.parses(&self.hypothesis.grammar, sent);
         match parses {
             Ok(false) | Err(IllegalGrammar {..}) => {
-                // TODO should this only be guessing legal grammars?
-                self.hypothesis.grammar = *env.domain.random_grammar();
-                self.last_change = 0;
+                // TODO: should this only be guessing legal grammars?
+                let new_grammar = *env.domain.random_grammar();
+                if let Ok(true) = env.domain.parses(&new_grammar, sent){
+                    // if the new grammar is a better hypothesis, adopt it.
+                    self.hypothesis.grammar = new_grammar;
+                }
+                self.clean_parses = 0;
+                // the new grammar also failed to parse the input. let's follow
+                // the greediness princple and not change our minds.
             },
             _ => {
-                self.last_change += 1;
+                self.clean_parses += 1;
                 // our hypothesis worked, let's keep it.
             }
         }
@@ -26,14 +32,14 @@ impl Learner for TriggerLearner {
         Theory::Simple(&self.hypothesis)
     }
     fn converged(&mut self) -> bool {
-        self.last_change > 100
+        self.clean_parses > 1000
     }
 }
 
 impl TriggerLearner {
     pub fn new() -> Self {
         TriggerLearner { hypothesis: SimpleHypothesis {grammar: 0},
-                         last_change: 0}
+                         clean_parses: 0}
     }
     pub fn boxed() -> Box<Learner> {
         Box::new(TriggerLearner::new())
