@@ -1,5 +1,4 @@
 extern crate csv;
-
 extern crate rand;
 use std::mem;
 use rand::{Rng};
@@ -8,16 +7,13 @@ use rand::distributions::{Range, Sample};
 use std::error::Error;
 use std::collections::{HashSet, HashMap};
 
+use sentence::{SurfaceForm, Illoc};
+
 pub const NUM_PARAMS: usize = 13;
 pub type Grammar = u16;
 pub type Sentence = u32;
 pub type TriggerVec = [Trigger; NUM_PARAMS];
 
-#[derive(Debug)]
-pub struct SurfaceForm {
-    pub illoc: String,
-    pub words: String
-}
 
 pub trait LanguageDomain {
     fn language(&self, g: &Grammar) -> Result<&HashSet<Sentence>, IllegalGrammar>;
@@ -208,9 +204,10 @@ impl Colag {
 
         for result in rdr.deserialize() {
             let (sentence, illoc, form): (Sentence, String, String) = result?;
-            self.surface_form.insert(sentence,
-                                     SurfaceForm { illoc: illoc.trim().to_string(),
-                                                   words: form.trim().to_string() });
+            let illoc: Illoc = illoc.trim().into();
+            let mut form: SurfaceForm = form.trim().into();
+            form.illoc = illoc;
+            self.surface_form.insert(sentence, form);
         }
         Ok(self)
     }
