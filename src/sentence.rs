@@ -1,13 +1,15 @@
-#[derive(PartialOrd, Eq, Ord)]
-enum FeatureVal {
+#![feature(test)]
+
+pub enum FeatureType {
+    WH,
+    WA
+}
+
+#[derive(Eq, Debug)]
+pub enum FeatureVal {
     True,
     False,
     Any
-}
-
-enum FeatureType {
-    WH,
-    WA
 }
 
 impl PartialEq for FeatureVal {
@@ -22,8 +24,29 @@ impl PartialEq for FeatureVal {
     }
 }
 
-#[derive(PartialEq, Eq, Ord, PartialOrd)]
-enum SurfaceSymbol {
+use std::cmp::Ordering;
+
+impl PartialOrd for FeatureVal {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FeatureVal {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (&FeatureVal::Any, _) => Ordering::Equal,
+            (_, &FeatureVal::Any) => Ordering::Equal,
+            (&FeatureVal::True,  &FeatureVal::True) => Ordering::Equal,
+            (&FeatureVal::False, &FeatureVal::False) => Ordering::Equal,
+            (&FeatureVal::True,  &FeatureVal::False) => Ordering::Greater,
+            (&FeatureVal::False,  &FeatureVal::True) => Ordering::Less
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub enum SurfaceSymbol {
     Adv { wa: FeatureVal, wh: FeatureVal },
     Aux,
     Never,
@@ -37,17 +60,28 @@ enum SurfaceSymbol {
     Ka
 }
 
-static adv: SurfaceSymbol = SurfaceSymbol::Adv { wh: FeatureVal::Any, wa: FeatureVal::Any };
-static o1: SurfaceSymbol = SurfaceSymbol::O1 { wh: FeatureVal::Any, wa: FeatureVal::Any };
-static o2: SurfaceSymbol = SurfaceSymbol::O2 { wh: FeatureVal::Any, wa: FeatureVal::Any };
-static o3: SurfaceSymbol = SurfaceSymbol::O3 { wh: FeatureVal::Any, wa: FeatureVal::Any };
-static pro: SurfaceSymbol = SurfaceSymbol::P { wa: FeatureVal::Any };
-static sub: SurfaceSymbol = SurfaceSymbol::S { wh: FeatureVal::Any, wa: FeatureVal::Any };
+struct FeatureSetting2 {
+    wa: FeatureVal,
+    wh: FeatureVal
+}
+
+enum SS {
+    Any(FeatureSetting2),
+    O1(FeatureSetting2),
+    Adv(FeatureSetting2)
+}
+
+pub static adv: SurfaceSymbol = SurfaceSymbol::Adv { wh: FeatureVal::Any, wa: FeatureVal::Any };
+pub static o1: SurfaceSymbol = SurfaceSymbol::O1 { wh: FeatureVal::Any, wa: FeatureVal::Any };
+pub static o2: SurfaceSymbol = SurfaceSymbol::O2 { wh: FeatureVal::Any, wa: FeatureVal::Any };
+pub static o3: SurfaceSymbol = SurfaceSymbol::O3 { wh: FeatureVal::Any, wa: FeatureVal::Any };
+pub static pro: SurfaceSymbol = SurfaceSymbol::P { wa: FeatureVal::Any };
+pub static sub: SurfaceSymbol = SurfaceSymbol::S { wh: FeatureVal::Any, wa: FeatureVal::Any };
 
 use self::SurfaceSymbol::*;
 
 impl SurfaceSymbol {
-    fn has_feature(&self, feature: &FeatureType) -> bool {
+    pub fn has_feature(&self, feature: &FeatureType) -> bool {
         match self {
             &Adv  { ref wa, ref wh}
             | &O1 { ref wa, ref wh}
@@ -95,6 +129,7 @@ impl<'a> From<&'a str> for SurfaceSymbol {
             "O3[+WH]" => O3 { wa: FeatureVal::False, wh: FeatureVal::True },
             "O3[+WH][+WA]" => O3 { wa: FeatureVal::True, wh: FeatureVal::True },
 
+            "S" => S { wa: FeatureVal::False, wh: FeatureVal::False },
             "S[+WA]" => S { wa: FeatureVal::True, wh: FeatureVal::False },
             "S[+WH]" => S { wa: FeatureVal::False, wh: FeatureVal::True },
             "S[+WH][+WA]" => S { wa: FeatureVal::True, wh: FeatureVal::True },
@@ -106,14 +141,26 @@ impl<'a> From<&'a str> for SurfaceSymbol {
     }
 }
 
-#[derive(PartialEq)]
-enum Illoc {
+#[derive(PartialEq, Debug)]
+pub enum Illoc {
     Dec,
-    Q
+    Q,
+    Imp
 }
 
-#[derive(PartialEq)]
-struct SurfaceForm {illoc: Illoc, words: Vec<SurfaceSymbol> }
+impl<'a> From <&'a str> for Illoc {
+    fn from(s: &'a str) -> Illoc {
+        match s {
+            "Q" => Illoc::Q,
+            "DEC" => Illoc::Dec,
+            "IMP" => Illoc::Imp,
+            _ => panic!(format!("Illegal illoc: {}", s))
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub struct SurfaceForm {pub illoc: Illoc, pub words: Vec<SurfaceSymbol> }
 
 impl<'a> From<&'a str> for SurfaceForm {
     fn from(s: &'a str) -> Self {
@@ -125,11 +172,11 @@ impl<'a> From<&'a str> for SurfaceForm {
 }
 
 impl SurfaceForm {
-    fn contains(&self, sym: &SurfaceSymbol) -> bool {
+    pub fn contains(&self, sym: &SurfaceSymbol) -> bool {
         return self.words.contains(sym);
     }
 
-    fn contains_feature(&self, feat: &FeatureType) -> bool {
+    pub fn contains_feature(&self, feat: &FeatureType) -> bool {
         for item in self.words.iter() {
             if item.has_feature(feat){
                 return true;
@@ -138,38 +185,72 @@ impl SurfaceForm {
         false
     }
 
-    fn topicalized(&self, sym: SurfaceSymbol) -> bool{
+    pub fn topicalized(&self, sym: &SurfaceSymbol) -> bool{
         if self.words.len() == 0 {
             return false;
         } else {
-            return self.words[0] == sym;
+            return self.words[0] == *sym;
         }
     }
 
-    fn order(&self, a: &SurfaceSymbol, b: &SurfaceSymbol) -> bool {
-        match (self.words.binary_search(a), self.words.binary_search(b)){
-            (Ok(x), Ok(y)) => x < y,
+    pub fn ends_with(&self, sym: &SurfaceSymbol) -> bool{
+        if self.words.len() == 0 {
+            return false;
+        } else {
+            return self.words[self.words.len()-1] == *sym;
+        }
+    }
+
+    fn index(&self, item: &SurfaceSymbol) -> Option<usize> {
+        for (n, word) in self.words.iter().enumerate() {
+            if word == item {
+                return Some(n)
+            }
+        }
+        None
+    }
+
+    pub fn order(&self, a: &SurfaceSymbol, b: &SurfaceSymbol) -> bool {
+        match (self.index(a), self.index(b)){
+            (Some(x), Some(y)) => x < y,
             _ => false
         }
     }
 
-    fn adjacent(&self, a: &SurfaceSymbol, b: &SurfaceSymbol) -> bool {
-        match (self.words.binary_search(a), self.words.binary_search(b)){
-            (Ok(x), Ok(y)) => x == y - 1,
+    pub fn adjacent(&self, a: &SurfaceSymbol, b: &SurfaceSymbol) -> bool {
+        match (self.index(a), self.index(b)){
+            (Some(x), Some(y)) => x == y - 1,
             _ => false
         }
     }
 
-    fn out_oblique(&self) -> bool {
+    pub fn starts_with(&self, words: &[&SurfaceSymbol]) -> bool{
+        let ws: Vec<&SurfaceSymbol> = self.words.iter().collect();
+        ws.starts_with(words)
+    }
+
+    // pub fn wh_topicalized(&self) -> bool {
+    //     match self self.words[0] {
+    //         Any { ref wh, ..},
+    //         | Adv { ref wh, ..},
+    //         | O1 { ref wh, ..},
+    //         | O2 { ref wh, ..},
+    //         | O3 { ref wh, ..},
+    //         | S  { ref wh, ..} => wh == FeatureVal::True,
+    //         _ => false
+    //     }
+    // }
+
+    pub fn out_oblique(&self) -> bool {
         if self.contains(&o1)
-            & self.order(&o1, &o2) & self.order(&o2, &pro) & self.adjacent(&pro, &o3) {
+            && self.order(&o1, &o2) && self.order(&o2, &pro) && self.adjacent(&pro, &o3) {
                 false
             }
         else if self.contains(&o3)
-            & self.order(&o3, &o2) & self.order(&o2, &o1) & self.adjacent(&o3, &pro) {
+            && self.order(&o3, &o2) && self.order(&o2, &o1) && self.adjacent(&o3, &pro) {
                 false
             }
-        else if self.contains(&o1) & self.contains(&o2) & self.contains(&o3) & self.contains(&pro) {
+        else if self.contains(&o1) && self.contains(&o2) && self.contains(&o3) && self.contains(&pro) {
             true
         }
         else {
@@ -178,18 +259,26 @@ impl SurfaceForm {
     }
 }
 
-mod bench {
-    use sentence::{SurfaceSymbol::*, SurfaceForm, FeatureVal::*, FeatureType::*};
-    use sentence::*;
-    extern crate test;
-    use test::Bencher;
-
-    #[bench]
-    fn topicalized(b: &mut Bencher){
-        let x = SurfaceForm {illoc: Illoc::Dec, words: vec![Aux, O1 {wh: True, wa: False}]};
-        // b.iter(|| assert!(x.contains_feature(&WH)));
-        let string =  "Aux Never Never Never O2[+WH][+WA] O1[+WH]";
-        let mut s: SurfaceForm = string.into();
-        b.iter(|| assert!(s.contains(&o2)));
-    }
+#[test]
+fn test_order(){
+    let s: SurfaceForm = "Not Verb P".into();
+    assert!(s.order(&Not, &SurfaceSymbol::P {wa: FeatureVal::False}))
 }
+
+// mod bench {
+//     extern crate test;
+//     use test::Bencher;
+
+//     use sentence::{SurfaceSymbol::*, SurfaceForm, FeatureVal::*, FeatureType::*};
+//     use sentence::*;
+
+
+//     #[bench]
+//     fn topicalized(b: &mut Bencher){
+//         let x = SurfaceForm {illoc: Illoc::Dec, words: vec![Aux, O1 {wh: True, wa: False}]};
+//         // b.iter(|| assert!(x.contains_feature(&WH)));
+//         let string =  "Aux Never Never Never O2[+WH][+WA] O1[+WH]";
+//         let mut s: SurfaceForm = string.into();
+//         b.iter(|| assert!(s.contains(&o2)));
+//     }
+// }

@@ -1,3 +1,4 @@
+use std::mem;
 use learner::{Learner, Environment};
 use domain::{Grammar, Sentence, NUM_PARAMS, LanguageDomain, Colag, get_param, Trigger};
 use hypothesis::{WeightedHypothesis, Theory};
@@ -5,28 +6,34 @@ use hypothesis::{WeightedHypothesis, Theory};
 const LEARNING_RATE: f64 = 0.001;
 const THRESHOLD: f64 = 0.02;
 
-pub struct VariationalLearner {
+type Mask = [bool; NUM_PARAMS];
+
+// reward only VL
+
+pub struct RewardOnlyVL {
     hypothesis: WeightedHypothesis,
 }
 
-impl VL for VariationalLearner {
+impl VL for RewardOnlyVL {
     fn vl_hypothesis(&mut self) -> &mut WeightedHypothesis {
         &mut self.hypothesis
     }
 }
 
-pub struct RewardOnlyVariationalLearner {
+// reward only relevant VL
+
+pub struct RewardOnlyRelevantVL {
     hypothesis: WeightedHypothesis,
 }
 
-impl VL for RewardOnlyVariationalLearner {
+impl VL for RewardOnlyRelevantVL {
     fn vl_hypothesis(&mut self) -> &mut WeightedHypothesis {
         &mut self.hypothesis
     }
+
     fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
         let triggers = env.domain.triggers(&sent);
-        let ref mut hyp = self.vl_hypothesis();
-        let ref mut weights = hyp.weights;
+        let ref mut weights = self.hypothesis.weights;
         for param in 0..NUM_PARAMS {
             let rate = match triggers[param] {
                 Trigger::On | Trigger::Off => { LEARNING_RATE },
@@ -41,6 +48,40 @@ impl VL for RewardOnlyVariationalLearner {
         }
     }
 }
+
+// masked VL
+
+pub struct MaskedVL {
+    hypothesis: WeightedHypothesis,
+    mask: Mask
+}
+
+const TEMP: [bool; NUM_PARAMS] = [false; NUM_PARAMS];
+
+impl VL for MaskedVL {
+    fn vl_hypothesis(&mut self) -> &mut WeightedHypothesis {
+        &mut self.hypothesis
+    }
+    fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
+        let triggers = env.domain.triggers(&sent);
+        let mask = mem::replace(&mut self.mask, TEMP);
+        {
+            let ref mut weights = self.vl_hypothesis().weights;
+            for param in 0..NUM_PARAMS {
+                if mask[param]{
+                    continue;
+                }
+                if get_param(gram, param) == 0 {
+                    weights[param] -= LEARNING_RATE * weights[param]
+                } else {
+                    weights[param] += LEARNING_RATE * (1. - weights[param])
+                }
+            }
+        }
+        mem::swap(&mut TEMP, &mut self.mask);
+    }
+}
+// boilerplate
 
 trait VL: Learner {
     fn vl_hypothesis(&mut self) -> &mut WeightedHypothesis;
@@ -84,16 +125,16 @@ trait VL: Learner {
     }
 }
 
-impl VariationalLearner {
-    pub fn new() -> VariationalLearner {
-        VariationalLearner { hypothesis: WeightedHypothesis::new() }
+impl RewardOnlyVL {
+    pub fn new() -> RewardOnlyVL {
+        RewardOnlyVL { hypothesis: WeightedHypothesis::new() }
     }
     pub fn boxed() -> Box<Learner> {
-        Box::new(VariationalLearner::new())
+        Box::new(RewardOnlyVL::new())
     }
 }
 
-impl Learner for VariationalLearner {
+impl Learner for RewardOnlyVL {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
         self.vl_learn(env, sent);
     }
@@ -105,16 +146,37 @@ impl Learner for VariationalLearner {
     }
 }
 
-impl RewardOnlyVariationalLearner {
-    pub fn new() -> RewardOnlyVariationalLearner {
-        RewardOnlyVariationalLearner { hypothesis: WeightedHypothesis::new() }
+impl RewardOnlyRelevantVL {
+    pub fn new() -> RewardOnlyRelevantVL {
+        RewardOnlyRelevantVL { hypothesis: WeightedHypothesis::new() }
     }
     pub fn boxed() -> Box<Learner> {
-        Box::new(RewardOnlyVariationalLearner::new())
+        Box::new(RewardOnlyRelevantVL::new())
     }
 }
 
-impl Learner for RewardOnlyVariationalLearner {
+impl Learner for RewardOnlyRelevantVL {
+    fn learn(&mut self, env: &Environment, sent: &Sentence){
+        self.vl_learn(env, sent);
+    }
+    fn theory(&self) -> Theory {
+        Theory::Weighted(&self.hypothesis)
+    }
+    fn converged(&mut self) -> bool {
+        self.vl_converged()
+    }
+}
+
+impl MaskedVL {
+    pub fn new(mask: Mask) -> MaskedVL {
+        MaskedVL { hypothesis: WeightedHypothesis::new(), mask: mask }
+    }
+    pub fn boxed(mask: Mask) -> Box<Learner> {
+        Box::new(MaskedVL::new(mask))
+    }
+}
+
+impl Learner for MaskedVL {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
         self.vl_learn(env, sent);
     }

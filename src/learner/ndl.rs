@@ -1,0 +1,213 @@
+use std::collections::HashSet;
+use learner::{Learner, Environment};
+use hypothesis::{WeightedHypothesis, Theory};
+use sentence::{SurfaceForm, Illoc};
+use domain::{LanguageDomain, Sentence};
+
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+enum Param {
+    SP,
+    HIP,
+    HCP,
+    OPT,
+    NS,
+    NT,
+    WHM,
+    PI,
+    TM,
+    VtoI,
+    ItoC,
+    AH,
+    QInv
+}
+
+#[derive(Debug)]
+enum Rate {
+    Normal,
+    Conservative
+}
+
+#[derive(Debug)]
+enum Op {
+    Update(Param, Rate, bool),
+    Update2((Param, Rate, bool), (Param, Rate, bool))
+}
+
+pub struct NonDefaultsLearner {
+    hypothesis: WeightedHypothesis
+}
+
+impl Learner for NonDefaultsLearner {
+    fn learn(&mut self, env: &Environment, sent: &Sentence){
+        let ops = self.run_triggers(env.domain.surface_form(sent));
+        // let mut params: HashSet<Param> = HashSet::new();
+        for op in ops {
+            // println!("{:?}", op);
+            match op {
+                Some(Op::Update(param, rate, direction)) => {
+                    // params.insert(param.clone());
+                    self.update_weights(param, rate, direction);
+                },
+                Some(Op::Update2((p1, r1, d1), (p2, r2, d2))) => {
+                    // params.insert(p1.clone());
+                    // params.insert(p2.clone());
+                    self.update_weights(p1, r1, d1);
+                    self.update_weights(p2, r2, d2);
+                },
+                None => ()
+            }
+        }
+        // println!("{}, {:?}", sent, params);
+    }
+    fn theory(&self) -> Theory {
+        Theory::Weighted(&self.hypothesis)
+    }
+}
+
+impl NonDefaultsLearner {
+    pub fn new() -> Self {
+        NonDefaultsLearner { hypothesis: WeightedHypothesis::new() }
+    }
+    pub fn boxed() -> Box<Learner> {
+        Box::new(Self::new())
+    }
+
+    fn run_triggers(&self, form: &SurfaceForm) -> Vec<Option<Op>> {
+        vec![
+            self.subject_position(form),
+            self.head_in_cp(form),
+            self.head_ip(form),
+            self.null_subject(form),
+            self.wh_movement(form)
+            ]
+    }
+
+    fn update_weights(&mut self, param: Param, rate: Rate, direction: bool){
+        let ref mut weights = self.hypothesis.weights;
+        let param = param as usize;
+        let rate = match rate {
+            Rate::Conservative => 0.001,
+            Rate::Normal => 0.001
+        };
+        match direction {
+            true => {
+                weights[param] += rate * weights[param];
+            },
+            false => {
+                weights[param] -= rate * weights[param];
+            }
+        }
+    }
+
+    fn subject_position(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::*;
+        if form.illoc != Illoc::Dec {
+            None
+        } else if !form.topicalized(&o1) && form.order(&o1, &sub){
+            Some(Op::Update(Param::SP, Rate::Normal, true))
+        } else if !form.topicalized(&sub) && form.order(&sub, &o1) {
+            Some(Op::Update(Param::SP, Rate::Normal, false))
+        } else {
+            None
+        }
+    }
+
+    fn head_ip(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::*;
+        use sentence::SurfaceSymbol::*;
+        if form.contains(&o3) & form.contains(&pro){
+            if !form.topicalized(&o3) & form.adjacent(&o3, &pro) {
+                return Some(Op::Update(Param::HIP, Rate::Normal, true));
+            } else if !form.topicalized(&o3) & form.adjacent(&pro, &o3) {
+                return Some(Op::Update(Param::HIP, Rate::Normal, false));
+            }
+        }
+        else if (form.illoc == Illoc::Imp) & form.contains(&o1) & form.contains(&Verb){
+            if form.adjacent(&o1, &Verb) {
+                return Some(Op::Update(Param::HIP, Rate::Normal, true));
+            } else if form.adjacent(&o1, &Verb){
+                return Some(Op::Update(Param::HIP, Rate::Normal, false));
+            }
+        }
+        None
+    }
+
+    fn head_in_cp(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::*;
+        use sentence::SurfaceSymbol::*;
+        if form.illoc != Illoc::Q {
+            None
+        }
+        else if form.ends_with(&Ka) || (form.ends_with(&Aux) && !form.contains(&Ka)){
+            Some(Op::Update(Param::HCP, Rate::Normal, true))
+        } else if form.topicalized(&Ka) || (form.topicalized(&Aux) && !form.contains(&Ka)) {
+            Some(Op::Update(Param::HCP, Rate::Normal, false))
+        } else {
+            None
+        }
+    }
+
+    fn optional_topic(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::FeatureType;
+        if !form.contains_feature(&FeatureType::WA) & (self.hypothesis.weights[Param::TM as usize] > 0.5) {
+            Some(Op::Update(Param::OPT, Rate::Normal, true))
+        } else {
+            None
+        }
+    }
+
+    // TODO: the python checks for membership in sentence string, not list
+    fn null_subject(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::*;
+        use sentence::SurfaceSymbol::*;
+
+        if (form.illoc == Illoc::Dec) & !form.contains(&sub) & form.out_oblique(){
+            Some(Op::Update2((Param::NS, Rate::Normal, true),
+                             (Param::OPT, Rate::Normal, true)))
+        } else if (form.illoc == Illoc::Dec) & form.contains(&sub) & form.out_oblique() {
+            Some(Op::Update(Param::NS, Rate::Conservative, false))
+        } else {
+            None
+        }
+    }
+
+    // // todo: the python checks for membership in sentence string, not list
+    fn null_topic(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::*;
+        use sentence::SurfaceSymbol::*;
+
+        if (form.illoc == Illoc::Dec) && form.contains(&o2) && !form.contains(&o1) {
+            Some(Op::Update2((Param::NT, Rate::Normal, true), (Param::OPT, Rate::Normal, false)))
+        }
+        else if ((form.illoc == Illoc::Dec)
+                 && form.contains(&o1)
+                 && form.contains(&o2)
+                 && form.contains(&o3)
+                 && form.contains(&sub)
+                 && form.contains(&adv)){
+            Some(Op::Update(Param::NT, Rate::Conservative, false))
+        } else {
+            None
+        }
+    }
+
+    fn wh_movement(&self, form: &SurfaceForm) -> Option<Op> {
+        use sentence::FeatureType::WH;
+        use sentence::FeatureVal::*;
+        use sentence::SurfaceSymbol::{O3};
+        use sentence::pro;
+        let has_wh = form.words.iter().any(|w| w.has_feature(&WH));
+
+        if form.illoc == Illoc::Q && has_wh {
+            if form.words[0].has_feature(&WH)
+                | form.starts_with(&[&pro, &O3 {wh: True, wa: Any}]) {
+                    Some(Op::Update(Param::WHM, Rate::Conservative, true))
+                } else {
+                    Some(Op::Update(Param::WHM, Rate::Normal, false))
+                }
+        } else {
+            None
+        }
+    }
+}

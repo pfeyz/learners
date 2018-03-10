@@ -6,7 +6,7 @@ pub mod variational;
 pub mod ndl;
 
 pub use self::trigger::TriggerLearner;
-pub use self::variational::{VariationalLearner, RewardOnlyVariationalLearner};
+pub use self::variational::{RewardOnlyVL, RewardOnlyRelevantVL};
 pub use self::ndl::NonDefaultsLearner;
 
 pub struct Environment {

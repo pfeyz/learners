@@ -1,16 +1,23 @@
+#![feature(test)]
+
 extern crate rand;
 use rand::Rng;
 
 use std::thread;
 use std::sync::Arc;
 
+use std::time::{SystemTime, Duration};
+
 mod domain;
 mod learner;
 mod hypothesis;
+mod sentence;
 
 use domain::{Colag, LanguageDomain, Sentence};
 use learner::{Learner, Environment};
 use hypothesis::{Theory};
+
+mod macrotest;
 
 type LearnerFactory = fn() -> Box<Learner>;
 
@@ -51,12 +58,14 @@ fn watch_learner<'a>(name: &str, id: u64, num_sentences: &u64, env: &Environment
 fn get_learner_factory(name: &str) -> Option<LearnerFactory> {
     match name {
         "tla" => Some(learner::TriggerLearner::boxed),
-        "vl" => Some(learner::VariationalLearner::boxed),
-        "rovl" => Some(learner::RewardOnlyVariationalLearner::boxed),
+        "rovl" => Some(learner::RewardOnlyVL::boxed),
+        "rorvl" => Some(learner::RewardOnlyRelevantVL::boxed),
         "ndl" => Some(learner::NonDefaultsLearner::boxed),
         _ => None
     }
 }
+
+
 
 fn main() {
     let colag = Colag::from_file("./data/COLAG_2011_ids.txt")
@@ -78,15 +87,18 @@ fn main() {
                 .expect(&format!("Illegal grammar: {}", target))
                 .iter()
                 .collect();
-            for iter in 0..50 {
-                for name in vec!["ndl", "vl", "rovl"]{
-                    if let Some(factory) = get_learner(&name) {
+            for iter in 0..33 {
+                // for name in vec!["ndl", "vl", "rovl", "tla"]{
+                for name in vec!["ndl"]{
+                    if let Some(factory) = get_learner_factory(&name) {
                         // watch_learner(name, iter, &500_000, &env, &language[..], factory);
+                        let start = SystemTime::now();
                         let (n, learner) = learn_language(&500_000, &env, &language[..], factory);
                         match learner.theory() {
                             Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
                             Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
                         }
+                        println!("{:?}", SystemTime::now().duration_since(start));
                     } else {
                         println!("`{}` is not a valid learner name", name);
                     }
@@ -94,7 +106,9 @@ fn main() {
             }
         }));
     }
+    let start = SystemTime::now();
     for h in handles {
         h.join();
     }
+    println!("{:?}", SystemTime::now().duration_since(start));
 }
