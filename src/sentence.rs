@@ -1,5 +1,3 @@
-#![feature(test)]
-
 pub enum FeatureType {
     WH,
     WA
@@ -242,43 +240,73 @@ impl SurfaceForm {
     // }
 
     pub fn out_oblique(&self) -> bool {
-        if self.contains(&o1)
-            && self.order(&o1, &o2) && self.order(&o2, &pro) && self.adjacent(&pro, &o3) {
-                false
+        if let Some(o1_index) = self.index(&o1){
+            if let Some(o2_index) = self.index(&o2){
+                if let Some(o3_index) = self.index(&o3){
+                    if let Some(pro_index) = self.index(&pro){
+                        if o1_index < o2_index && o2_index < pro_index && pro_index == o3_index - 1 {
+                            return false
+                        } else if o3_index < o2_index && o2_index < o1_index && o3_index == pro_index - 1 {
+                            return false
+                        } else {
+                            return true
+                        }
+                    }
+                }
             }
-        else if self.contains(&o3)
-            && self.order(&o3, &o2) && self.order(&o2, &o1) && self.adjacent(&o3, &pro) {
-                false
-            }
-        else if self.contains(&o1) && self.contains(&o2) && self.contains(&o3) && self.contains(&pro) {
-            true
         }
-        else {
-            false
-        }
+        return false
+    }
+        // let o1_index = self.index(&o1);
+        // let o2_index = self.index(&o2);
+        // let o3_index = self.index(&o3);
+        // let pro_index = self.index(&pro);
+        // match (o1_index, o2_index, o3_index, pro_index){
+        //     (Some(o1_index), Some(o2_index), Some(o3_index), Some(pro_index)) => {
+        //         if o1_index < o2_index && o2_index < pro_index && pro_index == o3_index - 1 {
+        //             false
+        //         } else if o3_index < o2_index && o2_index < o1_index && o3_index == pro_index - 1 {
+        //             false
+        //         } else {
+        //             true
+        //         }
+        //     },
+        //     _ => return false
+        // }
+    // }
+}
+
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+
+    use sentence::{SurfaceSymbol::*, SurfaceForm, FeatureVal::*, FeatureType::*};
+    use sentence::*;
+
+
+    #[bench]
+    fn topicalized(b: &mut Bencher){
+        let x = SurfaceForm {illoc: Illoc::Dec, words: vec![Aux, O1 {wh: True, wa: False}]};
+        // b.iter(|| assert!(x.contains_feature(&WH)));
+        let string =  "Aux Never Never Never O2[+WH][+WA] O1[+WH]";
+        let mut s: SurfaceForm = string.into();
+        b.iter(|| assert!(s.contains(&o2)));
+    }
+
+    #[bench]
+    fn out_oblique_fail(b: &mut Bencher){
+        let x = SurfaceForm {illoc: Illoc::Dec, words: vec![Aux, O1 {wh: True, wa: False}]};
+        // b.iter(|| assert!(x.contains_feature(&WH)));
+        let string =  "Aux Never Never Never O2[+WH][+WA] O1[+WH]";
+        let mut s: SurfaceForm = string.into();
+        b.iter(|| assert!(!s.out_oblique()))
+    }
+    #[bench]
+    fn out_oblique_succeed(b: &mut Bencher){
+        let x = SurfaceForm {illoc: Illoc::Dec, words: vec![Aux, O1 {wh: True, wa: False}]};
+        // b.iter(|| assert!(x.contains_feature(&WH)));
+        let string =  "P O2[+WH][+WA] O3 O1[+WH]";
+        let mut s: SurfaceForm = string.into();
+        b.iter(|| assert!(s.out_oblique()))
     }
 }
-
-#[test]
-fn test_order(){
-    let s: SurfaceForm = "Not Verb P".into();
-    assert!(s.order(&Not, &SurfaceSymbol::P {wa: FeatureVal::False}))
-}
-
-// mod bench {
-//     extern crate test;
-//     use test::Bencher;
-
-//     use sentence::{SurfaceSymbol::*, SurfaceForm, FeatureVal::*, FeatureType::*};
-//     use sentence::*;
-
-
-//     #[bench]
-//     fn topicalized(b: &mut Bencher){
-//         let x = SurfaceForm {illoc: Illoc::Dec, words: vec![Aux, O1 {wh: True, wa: False}]};
-//         // b.iter(|| assert!(x.contains_feature(&WH)));
-//         let string =  "Aux Never Never Never O2[+WH][+WA] O1[+WH]";
-//         let mut s: SurfaceForm = string.into();
-//         b.iter(|| assert!(s.contains(&o2)));
-//     }
-// }
