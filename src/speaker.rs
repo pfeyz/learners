@@ -32,3 +32,28 @@ impl<'a> Iterator for UniformRandomSpeaker<'a> {
         Some(*self.rng.choose(&self.sentences).unwrap())
     }
 }
+
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+    use rand::{Rng, thread_rng};
+    use learner::{NonDefaultsLearner, Learner, Environment};
+    use domain::{Colag, LanguageDomain, Sentence, Grammar, NUM_PARAMS};
+    use speaker::{UniformRandomSpeaker};
+
+    #[bench]
+    fn speaker_iter(b: &mut Bencher) {
+        let colag = Colag::default();
+        let mut speaker = UniformRandomSpeaker::new(&colag, 611);
+        b.iter(|| speaker.next().unwrap());
+    }
+
+    #[bench]
+    fn speaker_vec(b: &mut Bencher) {
+        let colag = Colag::default();
+        let mut speaker = UniformRandomSpeaker::new(&colag, 611);
+        let mut sentences: Vec<&Sentence> = speaker.take(20_000_000).collect();
+
+        b.iter(|| test::black_box(sentences.pop()));
+    }
+}

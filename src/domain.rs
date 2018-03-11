@@ -85,7 +85,7 @@ impl Colag {
             .unwrap()
     }
 
-    pub fn random_weighted_grammar(weights: [f64; NUM_PARAMS]) -> Grammar {
+    pub fn random_weighted_grammar(weights: &[f64; NUM_PARAMS]) -> Grammar {
         let mut grammar = 0;
         for param in 0..NUM_PARAMS {
             if weighted_coin_flip(weights[param]) {
@@ -242,4 +242,27 @@ fn weighted_coin_flip(weight: f64) -> bool {
     let mut rng = rand::thread_rng();
     let mut range = Range::new(0., 1.);
     range.sample(&mut rng) < weight
+}
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+    use rand::{Rng, thread_rng};
+    use learner::{NonDefaultsLearner, Learner, Environment};
+    use domain::{Colag, LanguageDomain, Sentence, Grammar, NUM_PARAMS};
+    use speaker::{UniformRandomSpeaker};
+
+    #[bench]
+    fn random_grammar(b: &mut Bencher) {
+        let colag = Colag::default();
+        b.iter(|| colag.random_grammar());
+    }
+
+
+    #[bench]
+    fn random_weighted_grammar(b: &mut Bencher) {
+        let colag = Colag::default();
+        let ref weights = [0.5; NUM_PARAMS];
+        b.iter(|| Colag::random_weighted_grammar(weights));
+    }
+
 }
