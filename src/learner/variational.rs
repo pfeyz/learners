@@ -98,9 +98,9 @@ trait VL: Learner {
         let ref mut weights = hyp.weights;
         for param in 0..NUM_PARAMS {
             if get_param(gram, param) == 0 {
-                weights[param] -= LEARNING_RATE * weights[param]
+                weights[param] -= LEARNING_RATE * weights[param];
             } else {
-                weights[param] += LEARNING_RATE * (1. - weights[param])
+                weights[param] += LEARNING_RATE * (1. - weights[param]);
             }
         }
     }
@@ -185,5 +185,34 @@ impl Learner for MaskedVL {
     }
     fn converged(&mut self) -> bool {
         self.vl_converged()
+    }
+}
+
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+    use rand::{Rng, thread_rng};
+    use learner::{RewardOnlyVL, RewardOnlyRelevantVL, Learner, Environment};
+    use domain::{Colag, LanguageDomain, Sentence, Grammar};
+    use speaker::{UniformRandomSpeaker};
+
+    #[bench]
+    fn reward_only_vl(b: &mut Bencher) {
+        let colag = Colag::default();
+        let env = Environment { domain: colag };
+        let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
+        let mut learner = RewardOnlyVL::new();
+        let mut sentences: Vec<&Sentence> = speaker.take(5_000_000).collect();
+        b.iter(|| learner.learn(&env, sentences.pop().unwrap()));
+    }
+
+    #[bench]
+    fn reward_only_relevant_vl(b: &mut Bencher) {
+        let colag = Colag::default();
+        let env = Environment { domain: colag };
+        let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
+        let mut learner = RewardOnlyRelevantVL::new();
+        let mut sentences: Vec<&Sentence> = speaker.take(5_000_000).collect();
+        b.iter(|| learner.learn(&env, sentences.pop().unwrap()));
     }
 }

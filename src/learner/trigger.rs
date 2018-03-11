@@ -45,3 +45,21 @@ impl TriggerLearner {
         Box::new(TriggerLearner::new())
     }
 }
+
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+    use rand::{Rng, thread_rng};
+    use learner::{TriggerLearner, Learner, Environment};
+    use domain::{Colag, LanguageDomain, Sentence, Grammar};
+    use speaker::{UniformRandomSpeaker};
+
+    #[bench]
+    fn trigger_learner_speaker(b: &mut Bencher) {
+        let colag = Colag::default();
+        let env = Environment { domain: colag };
+        let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
+        let mut learner = TriggerLearner::new();
+        b.iter(|| learner.learn(&env, speaker.next().unwrap()));
+    }
+}

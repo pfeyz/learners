@@ -76,6 +76,15 @@ impl Colag {
         }
     }
 
+    pub fn default() -> Colag {
+        Colag::from_file("./data/COLAG_2011_ids.txt")
+            .unwrap()
+            .read_triggers("./data/irrelevance-output.txt")
+            .unwrap()
+            .read_surface_forms("./data/COLAG_2011_sents.txt")
+            .unwrap()
+    }
+
     pub fn random_weighted_grammar(weights: [f64; NUM_PARAMS]) -> Grammar {
         let mut grammar = 0;
         for param in 0..NUM_PARAMS {

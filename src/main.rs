@@ -13,25 +13,26 @@ mod learner;
 mod hypothesis;
 mod sentence;
 
+mod speaker;
+
 use domain::{Colag, LanguageDomain, Sentence};
 use learner::{Learner, Environment};
 use hypothesis::{Theory};
+use speaker::{UniformRandomSpeaker};
 
 mod macrotest;
 
 type LearnerFactory = fn() -> Box<Learner>;
 
-fn learn_language<'a>(num_sentences: &u64, env: &Environment, language: &[&Sentence],
+fn learn_language<'a>(num_sentences: usize, env: &Environment, speaker: &mut UniformRandomSpeaker,
                       factory: LearnerFactory)
-                  -> (u64, Box<Learner>) {
+                  -> (usize, Box<Learner>) {
     let mut learner = factory();
-    let mut rng = rand::thread_rng();
-    let mut consumed = *num_sentences;
-    for n in 0..*num_sentences {
-        let sent = rng.choose(language).unwrap();
+    let mut consumed = 0;
+    for (n, sent) in speaker.into_iter().take(num_sentences).enumerate() {
         learner.learn(env, sent);
         if learner.converged() {
-            consumed = n;
+            consumed = n as usize;
             break;
         }
     }
@@ -68,32 +69,21 @@ fn get_learner_factory(name: &str) -> Option<LearnerFactory> {
 
 
 fn main() {
-    let colag = Colag::from_file("./data/COLAG_2011_ids.txt")
-        .unwrap()
-        .read_triggers("./data/irrelevance-output.txt")
-        .unwrap()
-        .read_surface_forms("./data/COLAG_2011_sents.txt")
-        .unwrap();
-
-    let env = Arc::new(Environment { domain: colag });
+    let env = Arc::new(Environment { domain: Colag::default() });
     let mut handles = Vec::new();
+    let start = SystemTime::now();
     for _ in 0..1 {
         let env = env.clone();
         handles.push(thread::spawn(move|| {
             let target = 611;
-            let language: Vec<&Sentence> = env
-                .domain
-                .language(&target)
-                .expect(&format!("Illegal grammar: {}", target))
-                .iter()
-                .collect();
-            for iter in 0..33 {
+            let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
+            for iter in 0..100 {
                 // for name in vec!["ndl", "vl", "rovl", "tla"]{
-                for name in vec!["ndl"]{
+                for name in vec!["rovl"]{
                     if let Some(factory) = get_learner_factory(&name) {
                         // watch_learner(name, iter, &500_000, &env, &language[..], factory);
                         let start = SystemTime::now();
-                        let (n, learner) = learn_language(&500_000, &env, &language[..], factory);
+                        let (n, learner) = learn_language(2_000_000, &env, &mut speaker, factory);
                         match learner.theory() {
                             Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
                             Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
@@ -106,7 +96,6 @@ fn main() {
             }
         }));
     }
-    let start = SystemTime::now();
     for h in handles {
         h.join();
     }

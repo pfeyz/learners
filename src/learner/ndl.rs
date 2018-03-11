@@ -40,7 +40,8 @@ pub struct NonDefaultsLearner {
 
 impl Learner for NonDefaultsLearner {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
-        let ops = self.run_triggers(env.domain.surface_form(sent));
+        let surface_form = env.domain.surface_form(sent);
+        let ops = self.run_triggers(surface_form);
         // let mut params: HashSet<Param> = HashSet::new();
         for op in ops {
             // println!("{:?}", op);
@@ -79,7 +80,8 @@ impl NonDefaultsLearner {
             self.head_in_cp(form),
             self.head_ip(form),
             self.null_subject(form),
-            self.wh_movement(form)
+            self.wh_movement(form),
+            self.prep_stranding(form)
             ]
     }
 
@@ -209,5 +211,27 @@ impl NonDefaultsLearner {
         } else {
             None
         }
+    }
+
+    fn prep_stranding(&self, form: &SurfaceForm) -> Option<Op> {
+        None
+    }
+}
+
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+    use rand::{Rng, thread_rng};
+    use learner::{NonDefaultsLearner, Learner, Environment};
+    use domain::{Colag, LanguageDomain, Sentence, Grammar};
+    use speaker::{UniformRandomSpeaker};
+
+    #[bench]
+    fn non_defaults_learner(b: &mut Bencher) {
+        let colag = Colag::default();
+        let env = Environment { domain: colag };
+        let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
+        let mut learner = NonDefaultsLearner::new();
+        b.iter(|| learner.learn(&env, speaker.next().unwrap()));
     }
 }
