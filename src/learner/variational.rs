@@ -72,12 +72,79 @@ impl Learner for RewardOnlyVL {
     }
 }
 
+pub struct RewardOnlyRelevantVL {
+    hypothesis: WeightedHypothesis,
+    rng: rand::XorShiftRng,
+}
+
+impl RewardOnlyRelevantVL {
+    pub fn new() -> RewardOnlyRelevantVL {
+        RewardOnlyRelevantVL { hypothesis: WeightedHypothesis::new(),
+                       rng: rand::weak_rng() }
+    }
+    pub fn boxed() -> Box<Learner> {
+        Box::new(RewardOnlyRelevantVL::new())
+    }
+
+    fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
+        let triggers = env.domain.triggers(&sent);
+        let ref mut weights = self.hypothesis.weights;
+        for param in 0..NUM_PARAMS {
+            let rate = match triggers[param] {
+                Trigger::On | Trigger::Off => { LEARNING_RATE },
+                Trigger::Ambiguous         => { LEARNING_RATE }
+                Trigger::Irrelevant        => { 0. },
+            };
+            if get_param(gram, param) == 0 {
+                weights[param] -= rate * weights[param]
+            } else {
+                weights[param] += rate * (1. - weights[param])
+            }
+        }
+    }
+
+    fn punish(&mut self, _env: &Environment, _gram: &Grammar, _sent: &Sentence){
+    }
+}
+
+impl Learner for RewardOnlyRelevantVL {
+    fn learn(&mut self, env: &Environment, sent: &Sentence){
+        loop {
+            let g = Colag::random_weighted_grammar(&mut self.rng,
+                                                   &self.hypothesis.weights);
+            match env.domain.parses(&g, sent) {
+                Ok(parsed) => {
+                    if parsed {
+                        self.reward(env, &g, sent);
+                    } else {
+                        self.punish(env, &g, sent);
+                    }
+                    break;
+                },
+                Err(_) => ()  // wasn't a legal grammar, try again.
+            }
+        }
+    }
+
+        fn converged(&mut self) -> bool {
+            for weight in self.hypothesis.weights.iter() {
+                if (weight > &THRESHOLD) & (weight < &(1.0 - THRESHOLD)) {
+                    return false;
+                }
+            }
+            true
+        }
+    fn theory(&self) -> Theory {
+        Theory::Weighted(&self.hypothesis)
+    }
+}
+
 
 mod bench {
     extern crate test;
     use self::test::Bencher;
     use rand::{Rng, thread_rng};
-    use learner::{RewardOnlyVL, Learner, Environment};
+    use learner::{RewardOnlyVL, RewardOnlyRelevantVL, Learner, Environment};
     use domain::{Colag, LanguageDomain, Sentence, Grammar};
     use speaker::{UniformRandomSpeaker};
 
@@ -87,6 +154,16 @@ mod bench {
         let env = Environment { domain: colag };
         let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
         let mut learner = RewardOnlyVL::new();
+        // let mut sentences: Vec<&Sentence> = speaker.take(5_000_000).collect();
+        b.iter(|| learner.learn(&env, speaker.next().unwrap()));
+    }
+
+    #[bench]
+    fn reward_only_relevant_vl(b: &mut Bencher) {
+        let colag = Colag::default();
+        let env = Environment { domain: colag };
+        let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
+        let mut learner = RewardOnlyRelevantVL::new();
         // let mut sentences: Vec<&Sentence> = speaker.take(5_000_000).collect();
         b.iter(|| learner.learn(&env, speaker.next().unwrap()));
     }
