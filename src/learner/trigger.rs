@@ -2,9 +2,13 @@ use learner::{Learner, Environment};
 use domain::{Sentence, IllegalGrammar, LanguageDomain};
 use hypothesis::{SimpleHypothesis, Theory};
 
+use rand;
+use rand::{Rng};
+
 pub struct TriggerLearner {
     hypothesis: SimpleHypothesis,
-    clean_parses: u32
+    clean_parses: u32,
+    rng: rand::XorShiftRng,
 }
 
 impl Learner for TriggerLearner {
@@ -13,7 +17,7 @@ impl Learner for TriggerLearner {
         match parses {
             Ok(false) | Err(IllegalGrammar {..}) => {
                 // TODO: should this only be guessing legal grammars?
-                let new_grammar = *env.domain.random_grammar();
+                let new_grammar = *env.domain.random_grammar(&mut self.rng);
                 if let Ok(true) = env.domain.parses(&new_grammar, sent){
                     // if the new grammar is a better hypothesis, adopt it.
                     self.hypothesis.grammar = new_grammar;
@@ -28,7 +32,7 @@ impl Learner for TriggerLearner {
             }
         }
     }
-    fn theory(&self) -> Theory {
+    fn theory<'a>(&'a self) -> Theory<'a> {
         Theory::Simple(&self.hypothesis)
     }
     fn converged(&mut self) -> bool {
@@ -39,7 +43,8 @@ impl Learner for TriggerLearner {
 impl TriggerLearner {
     pub fn new() -> Self {
         TriggerLearner { hypothesis: SimpleHypothesis {grammar: 0},
-                         clean_parses: 0}
+                         clean_parses: 0,
+                         rng: rand::weak_rng()}
     }
     pub fn boxed() -> Box<Learner> {
         Box::new(TriggerLearner::new())
@@ -61,5 +66,14 @@ mod bench {
         let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
         let mut learner = TriggerLearner::new();
         b.iter(|| learner.learn(&env, speaker.next().unwrap()));
+    }
+
+    #[bench]
+    fn trigger_learner_constant(b: &mut Bencher) {
+        let colag = Colag::default();
+        let env = Environment { domain: colag };
+        let ref sent = 400;
+        let mut learner = TriggerLearner::new();
+        b.iter(|| learner.learn(&env, sent));
     }
 }

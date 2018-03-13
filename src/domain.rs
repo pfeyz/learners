@@ -1,7 +1,7 @@
 extern crate csv;
 extern crate rand;
 use std::mem;
-use rand::{Rng};
+use rand::{XorShiftRng, Rng};
 use rand::distributions::{Range, Sample};
 
 use std::error::Error;
@@ -20,7 +20,7 @@ pub trait LanguageDomain {
     fn surface_form(&self, g: &Sentence) -> &SurfaceForm;
     fn triggers(&self, &Sentence) -> &TriggerVec;
     fn parses(&self, &Grammar, &Sentence) -> Result<bool, IllegalGrammar>;
-    fn random_grammar(&self) -> &Grammar;
+    fn random_grammar(&self, rng: &mut XorShiftRng) -> &Grammar;
 }
 
 #[derive(Debug)]
@@ -60,8 +60,7 @@ impl LanguageDomain for Colag {
     fn surface_form(&self, s: &Sentence) -> &SurfaceForm {
         self.surface_form.get(s).unwrap()
     }
-    fn random_grammar(&self) -> &Grammar {
-        let mut rng = rand::thread_rng();
+    fn random_grammar(&self, rng: &mut XorShiftRng) -> &Grammar {
         rng.choose(&self.grammars).unwrap()
     }
 }
@@ -85,10 +84,11 @@ impl Colag {
             .unwrap()
     }
 
-    pub fn random_weighted_grammar(weights: &[f64; NUM_PARAMS]) -> Grammar {
+    pub fn random_weighted_grammar(rng: &mut XorShiftRng,
+                                   weights: &[f64; NUM_PARAMS]) -> Grammar {
         let mut grammar = 0;
         for param in 0..NUM_PARAMS {
-            if weighted_coin_flip(weights[param]) {
+            if weighted_coin_flip(rng, weights[param]) {
                 grammar = set_param(grammar, param);
             }
         }
@@ -237,15 +237,15 @@ fn set_param(grammar: Grammar, param_num: usize) -> Grammar {
 }
 
 /// Returns true `weight` percent of the time
-fn weighted_coin_flip(weight: f64) -> bool {
+fn weighted_coin_flip(rng: &mut XorShiftRng, weight: f64) -> bool {
     debug_assert!((weight >= 0.) & (weight <= 1.));
-    let mut rng = rand::thread_rng();
     let mut range = Range::new(0., 1.);
-    range.sample(&mut rng) < weight
+    range.sample(rng) < weight
 }
 mod bench {
     extern crate test;
     use self::test::Bencher;
+    use rand;
     use rand::{Rng, thread_rng};
     use learner::{NonDefaultsLearner, Learner, Environment};
     use domain::{Colag, LanguageDomain, Sentence, Grammar, NUM_PARAMS};
@@ -254,15 +254,17 @@ mod bench {
     #[bench]
     fn random_grammar(b: &mut Bencher) {
         let colag = Colag::default();
-        b.iter(|| colag.random_grammar());
+        let ref mut rng = rand::weak_rng();
+        b.iter(|| colag.random_grammar(rng));
     }
 
 
     #[bench]
     fn random_weighted_grammar(b: &mut Bencher) {
         let colag = Colag::default();
+        let ref mut rng = rand::weak_rng();
         let ref weights = [0.5; NUM_PARAMS];
-        b.iter(|| Colag::random_weighted_grammar(weights));
+        b.iter(|| Colag::random_weighted_grammar(rng, weights));
     }
 
 }
