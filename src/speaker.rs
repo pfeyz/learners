@@ -7,7 +7,7 @@ use domain::{Colag, LanguageDomain, Grammar, Sentence};
 pub struct UniformRandomSpeaker<'a> {
     domain: &'a Colag,
     language: Grammar,
-    sentences: Vec<&'a Sentence>,
+    sentences: &'a Vec<Sentence>,
     rng: XorShiftRng
 }
 
@@ -17,10 +17,8 @@ impl<'a> UniformRandomSpeaker<'a> {
             domain: domain,
             language: language,
             sentences: domain
-                .language(&language)
-                .expect(&format!("Illegal grammar: {}", language))
-                .iter()
-                .collect(),
+                .language_vec(&language)
+                .expect(&format!("Illegal grammar: {}", language)),
             rng: rand::weak_rng()
         }
     }
@@ -29,7 +27,7 @@ impl<'a> UniformRandomSpeaker<'a> {
 impl<'a> Iterator for UniformRandomSpeaker<'a> {
     type Item = &'a Sentence;
     fn next(&mut self) -> Option<Self::Item> {
-        Some(*self.rng.choose(&self.sentences).unwrap())
+        Some(self.rng.choose(&self.sentences).unwrap())
     }
 }
 

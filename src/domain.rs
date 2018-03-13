@@ -17,6 +17,7 @@ pub type TriggerVec = [Trigger; NUM_PARAMS];
 
 pub trait LanguageDomain {
     fn language(&self, g: &Grammar) -> Result<&HashSet<Sentence>, IllegalGrammar>;
+    fn language_vec(&self, g: &Grammar) -> Result<&Vec<Sentence>, IllegalGrammar>;
     fn surface_form(&self, g: &Sentence) -> &SurfaceForm;
     fn triggers(&self, &Sentence) -> &TriggerVec;
     fn parses(&self, &Grammar, &Sentence) -> Result<bool, IllegalGrammar>;
@@ -39,6 +40,7 @@ type ColagTsvLine = (u16, u32, u32);
 
 pub struct Colag {
     language: HashMap<Grammar, HashSet<u32>>,
+    language_vec: HashMap<Grammar, Vec<Sentence>>,
     grammars: Vec<Grammar>,
     trigger: HashMap<Sentence, TriggerVec>,
     surface_form: HashMap<Sentence, SurfaceForm>
@@ -47,6 +49,9 @@ pub struct Colag {
 impl LanguageDomain for Colag {
     fn language(&self, g: &Grammar) -> Result<&HashSet<Sentence>, IllegalGrammar> {
         self.language.get(g).ok_or_else({|| IllegalGrammar {grammar: *g } })
+    }
+    fn language_vec(&self, g: &Grammar) -> Result<&Vec<Sentence>, IllegalGrammar> {
+        self.language_vec.get(g).ok_or_else({|| IllegalGrammar {grammar: *g } })
     }
     fn triggers(&self, s: &Sentence) -> &TriggerVec {
         self.trigger.get(s).unwrap()
@@ -69,6 +74,7 @@ impl Colag {
     pub fn new() -> Colag {
         let lang = HashMap::new();
         Colag { language: lang,
+                language_vec: HashMap::new(),
                 grammars: Vec::new(),
                 trigger: HashMap::new(),
                 surface_form: HashMap::new()
@@ -112,8 +118,15 @@ impl Colag {
                 domain.language.insert(grammar, set);
             }
         }
+
+        for (grammar, sentences) in domain.language.iter() {
+            domain.language_vec.insert(*grammar,
+                                       sentences.clone().into_iter().collect());
+        }
+
         domain.grammars = domain.language.keys().map(|x| *x).collect();
         assert!(domain.language.len() == 3072, "Expected 3072 languages in Colag");
+        assert!(domain.language_vec.len() == 3072, "Expected 3072 languages in Colag");
         {
             let english = domain.language.get(&611).unwrap();
             assert!(english.len() == 360, "Expected 360 sentences in Colag English");
@@ -242,6 +255,7 @@ fn weighted_coin_flip(rng: &mut XorShiftRng, weight: f64) -> bool {
     let mut range = Range::new(0., 1.);
     range.sample(rng) < weight
 }
+
 mod bench {
     extern crate test;
     use self::test::Bencher;
