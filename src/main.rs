@@ -64,31 +64,35 @@ fn get_learner_factory(name: &str) -> Option<LearnerFactory> {
     }
 }
 
-
+fn to_secs(duration: Duration) -> f64 {
+    duration.as_secs() as f64
+        + duration.subsec_nanos() as f64 * 1e-9
+}
 
 fn main() {
     let env = Arc::new(Environment { domain: Colag::default() });
     let mut handles = Vec::new();
     let start = SystemTime::now();
-    for _ in 0..1 {
+    for _ in 0..4 {
         let env = env.clone();
         handles.push(thread::spawn(move|| {
-            let target = 611;
-            let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
-            for iter in 0..100 {
-                // for name in vec!["ndl", "vl", "rovl", "tla"]{
-                for name in vec!["rovl"]{
-                    if let Some(factory) = get_learner_factory(&name) {
-                        // watch_learner(name, iter, &500_000, &env, &language[..], factory);
-                        let start = SystemTime::now();
-                        let (n, learner) = learn_language(2_000_000, &env, &mut speaker, factory);
-                        match learner.theory() {
-                            Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
-                            Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
+            for target in vec![611, 3856, 2253, 584]{
+                let mut speaker = UniformRandomSpeaker::new(&env.domain, target);
+                    // for name in vec!["ndl", "vl", "rovl", "tla"]{
+                    for name in vec!["rorvl", "rovl"]{
+                        for iter in 0..1 {
+                        if let Some(factory) = get_learner_factory(&name) {
+                            // watch_learner(name, iter, &500_000, &env, &language[..], factory);
+                            let start = SystemTime::now();
+                            let (n, learner) = learn_language(2_000_000, &env, &mut speaker, factory);
+                            match learner.theory() {
+                                Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
+                                Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
+                            }
+                            println!("{:?}", to_secs(SystemTime::now().duration_since(start).unwrap()));
+                        } else {
+                            println!("`{}` is not a valid learner name", name);
                         }
-                        println!("{:?}", SystemTime::now().duration_since(start));
-                    } else {
-                        println!("`{}` is not a valid learner name", name);
                     }
                 }
             }
