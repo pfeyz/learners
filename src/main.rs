@@ -28,15 +28,13 @@ fn learn_language<'a>(num_sentences: usize, env: &Environment, speaker: &mut Uni
                       factory: LearnerFactory)
                   -> (usize, Box<Learner>) {
     let mut learner = factory();
-    let mut consumed = 0;
-    for (n, sent) in speaker.into_iter().take(num_sentences).enumerate() {
+    for (consumed, sent) in speaker.into_iter().take(num_sentences).enumerate() {
         learner.learn(env, sent);
         if learner.converged() {
-            consumed = n as usize;
-            break;
+            return (consumed + 1 as usize, learner)
         }
     }
-    (consumed, learner)
+    (num_sentences, learner)
 }
 fn watch_learner<'a>(name: &str, id: u64, num_sentences: &u64, env: &Environment, language: &[&Sentence], factory: LearnerFactory) {
     let mut learner = factory();
