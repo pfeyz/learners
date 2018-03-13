@@ -1,5 +1,5 @@
 use rand;
-use rand::{Rng, ThreadRng};
+use rand::{Rng, XorShiftRng};
 use rand::distributions::{Range, Sample};
 
 use domain::{Colag, LanguageDomain, Grammar, Sentence};
@@ -8,7 +8,7 @@ pub struct UniformRandomSpeaker<'a> {
     domain: &'a Colag,
     language: Grammar,
     sentences: Vec<&'a Sentence>,
-    rng: ThreadRng
+    rng: XorShiftRng
 }
 
 impl<'a> UniformRandomSpeaker<'a> {
@@ -21,7 +21,7 @@ impl<'a> UniformRandomSpeaker<'a> {
                 .expect(&format!("Illegal grammar: {}", language))
                 .iter()
                 .collect(),
-            rng: rand::thread_rng()
+            rng: rand::weak_rng()
         }
     }
 }
