@@ -20,21 +20,18 @@ use learner::{Learner, Environment};
 use hypothesis::{Theory};
 use speaker::{UniformRandomSpeaker};
 
-mod macrotest;
-
 type LearnerFactory = fn() -> Box<Learner>;
 
 fn learn_language<'a>(num_sentences: usize, env: &Environment, speaker: &mut UniformRandomSpeaker,
-                      factory: LearnerFactory)
-                  -> (usize, Box<Learner>) {
-    let mut learner = factory();
+                      learner: &mut Learner)
+                  -> usize {
     for (consumed, sent) in speaker.into_iter().take(num_sentences).enumerate() {
         learner.learn(env, sent);
         if learner.converged() {
-            return (consumed + 1 as usize, learner)
+            return consumed + 1 as usize;
         }
     }
-    (num_sentences, learner)
+    num_sentences
 }
 fn watch_learner<'a>(name: &str, id: u64, num_sentences: &u64, env: &Environment, language: &[&Sentence], factory: LearnerFactory) {
     let mut learner = factory();
@@ -77,21 +74,29 @@ fn main() {
         let env = env.clone();
         handles.push(thread::spawn(move|| {
             for target in vec![611, 3856, 2253, 584]{
+                let mut rng = rand::weak_rng();
                 let mut speaker = UniformRandomSpeaker::new(&env.domain, target);
                     // for name in vec!["ndl", "vl", "rovl", "tla"]{
                     for name in vec!["rorvl", "rovl"]{
-                        for iter in 0..1 {
+                        for iter in 0..25 {
                         if let Some(factory) = get_learner_factory(&name) {
                             // watch_learner(name, iter, &500_000, &env, &language[..], factory);
                             let start = SystemTime::now();
-                            let (n, learner) = learn_language(2_000_000, &env, &mut speaker, factory);
+                            let mut learner = factory();
+                            let consumed = learn_language(5_000_000, &env, &mut speaker, &mut *learner);
+                            let secs = to_secs(SystemTime::now().duration_since(start).unwrap());
                             match learner.theory() {
-                                Theory::Simple(h) => println!("{}, {}, {}, {}", name, n, target, h),
-                                Theory::Weighted(h) => println!("{}, {}, {}, {}", name, n, target, h)
+                                Theory::Simple(h) => println!("{}, {}, {}, {}, {}", name, consumed, target, h, secs),
+                                Theory::Weighted(hypo) => println!("{}, {}, {}, {}, {}, {}",
+                                                                      name,
+                                                                      consumed,
+                                                                      target,
+                                                                      Colag::random_weighted_grammar(&mut rng, &hypo.weights),
+                                                                      hypo,
+                                                                      secs)
                             }
-                            println!("{:?}", to_secs(SystemTime::now().duration_since(start).unwrap()));
                         } else {
-                            println!("`{}` is not a valid learner name", name);
+                            eprintln!("`{}` is not a valid learner name", name);
                         }
                     }
                 }

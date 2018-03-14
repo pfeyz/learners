@@ -36,7 +36,7 @@ impl fmt::Display for WeightedHypothesis {
         // write!(f, "WeightedHypothesis {{ weights: [")?;
         // write!(f, "{}, ", Colag::random_weighted_grammar(self.weights))?;
         for i in 0..NUM_PARAMS {
-            write!(f, "{:.2}, ", self.weights[i])?;
+            write!(f, "{:.6}, ", self.weights[i])?;
         }
         // write!(f, "]}}")?;
         Ok(())
