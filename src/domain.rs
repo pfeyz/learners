@@ -29,6 +29,7 @@ pub struct IllegalGrammar {
     grammar: Grammar
 }
 
+#[derive(Debug)]
 pub enum Trigger {
     On,
     Off,
@@ -39,7 +40,7 @@ pub enum Trigger {
 type ColagTsvLine = (u16, u32, u32);
 
 pub struct Colag {
-    language: HashMap<Grammar, HashSet<u32>>,
+    pub language: HashMap<Grammar, HashSet<u32>>,
     language_vec: HashMap<Grammar, Vec<Sentence>>,
     grammars: Vec<Grammar>,
     trigger: HashMap<Sentence, TriggerVec>,
@@ -104,6 +105,7 @@ impl Colag {
     pub fn from_file(filename: &str) -> Result<Colag, Box<Error>> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
+            .has_headers(false)
             .from_path(filename)
             .expect(filename);
         let mut domain = Colag::new();
@@ -140,6 +142,7 @@ impl Colag {
     pub fn read_triggers(mut self, filename: &str) -> Result<Self, Box<Error>> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b' ')
+            .has_headers(false)
             .from_path(filename)
             .expect(filename);
 
@@ -221,6 +224,7 @@ impl Colag {
     pub fn read_surface_forms(mut self, filename: &str) -> Result<Self, Box<Error>> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
+            .has_headers(false)
             .from_path(filename)
             .expect(filename);
 
