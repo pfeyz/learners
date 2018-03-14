@@ -93,7 +93,7 @@ fn main(){
                 for mut learner in learners {
                     let consumed = learn_language(5_000_000, &env, &mut speaker, &mut learner);
                     if let Theory::Weighted(weights) = learner.theory(){
-                        println!("{}, {}, {}, {}", learner, consumed, target, weights);
+                        println!("{}, {}, {}, {}", learner, target, consumed, weights);
                     }
                 }
             }
