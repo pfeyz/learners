@@ -1,7 +1,10 @@
 use std::mem;
+use std::fmt;
 use learner::{Learner, Environment};
 use domain::{Grammar, Sentence, NUM_PARAMS, LanguageDomain, Colag, get_param, Trigger};
 use hypothesis::{WeightedHypothesis, Theory};
+
+use triggers::{TriggerMap};
 
 use rand;
 use rand::XorShiftRng;
@@ -72,28 +75,48 @@ impl Learner for RewardOnlyVL {
     }
 }
 
-pub struct RewardOnlyRelevantVL {
+pub struct RewardOnlyRelevantVL<'a> {
+    name: String,
     hypothesis: WeightedHypothesis,
+    trigger_map: &'a TriggerMap,
+    activated: [u32; NUM_PARAMS], // indicates if a weight has ever been adjusted
+    consumed: u64,
     rng: rand::XorShiftRng,
 }
 
-impl RewardOnlyRelevantVL {
-    pub fn new() -> RewardOnlyRelevantVL {
-        RewardOnlyRelevantVL { hypothesis: WeightedHypothesis::new(),
-                       rng: rand::weak_rng() }
+impl<'a> fmt::Display for RewardOnlyRelevantVL<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RewardOnlyRelevant[{}]", self.name)
     }
-    pub fn boxed() -> Box<Learner> {
-        Box::new(RewardOnlyRelevantVL::new())
+}
+
+impl<'a> RewardOnlyRelevantVL<'a> {
+    pub fn new(name: &str, trigger_map: &'a TriggerMap) -> RewardOnlyRelevantVL<'a> {
+        RewardOnlyRelevantVL { hypothesis: WeightedHypothesis::new(),
+                               trigger_map: trigger_map,
+                               activated: [0; NUM_PARAMS],
+                               name: name.to_string(),
+                               consumed: 0,
+                               rng: rand::weak_rng() }
     }
 
     fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
-        let triggers = env.domain.triggers(&sent);
+        let triggers = self.trigger_map.sentence(&sent)
+            .expect(&format!("no trigger found for {}", &sent));
         let ref mut weights = self.hypothesis.weights;
         for param in 0..NUM_PARAMS {
             let rate = match triggers[param] {
-                Trigger::On | Trigger::Off => { LEARNING_RATE },
-                Trigger::Ambiguous         => { LEARNING_RATE }
-                Trigger::Irrelevant        => { 0. },
+                Trigger::On | Trigger::Off => {
+                    self.activated[param] += 1;
+                    LEARNING_RATE
+                },
+                Trigger::Ambiguous         => {
+                    self.activated[param] += 1;
+                    LEARNING_RATE
+                }
+                Trigger::Irrelevant        => {
+                    0.
+                },
             };
             if get_param(gram, param) == 0 {
                 weights[param] -= rate * weights[param]
@@ -107,11 +130,12 @@ impl RewardOnlyRelevantVL {
     }
 }
 
-impl Learner for RewardOnlyRelevantVL {
+impl<'a> Learner for RewardOnlyRelevantVL<'a> {
     fn learn(&mut self, env: &Environment, sent: &Sentence){
         loop {
             let g = Colag::random_weighted_grammar(&mut self.rng,
                                                    &self.hypothesis.weights);
+            self.consumed += 1;
             match env.domain.parses(&g, sent) {
                 Ok(parsed) => {
                     if parsed {
@@ -126,9 +150,13 @@ impl Learner for RewardOnlyRelevantVL {
         }
     }
 
+
+
         fn converged(&mut self) -> bool {
-            for weight in self.hypothesis.weights.iter() {
-                if (weight > &THRESHOLD) & (weight < &(1.0 - THRESHOLD)) {
+            let mut count = 0;
+            for (n, weight) in self.hypothesis.weights.iter().enumerate() {
+                let dead_param = (self.activated[n] == 0) && (self.consumed > 2000);
+                if (weight > &THRESHOLD) && (weight < &(1.0 - THRESHOLD)) && !dead_param {
                     return false;
                 }
             }
