@@ -16,7 +16,7 @@ mod sentence;
 mod speaker;
 mod triggers;
 
-use domain::{Colag, LanguageDomain, Sentence};
+use domain::{Colag, LanguageDomain, Sentence, Grammar};
 use learner::{Learner, Environment};
 use hypothesis::{Theory};
 use speaker::{UniformRandomSpeaker};
@@ -70,6 +70,7 @@ fn to_secs(duration: Duration) -> f64 {
 // static LANGUAGES: [u16; 4] = [611, 3856, 2253, 584];
 static LANGUAGES: [u16; 1] = [611];
 
+use std::sync::{Mutex};
 
 fn main(){
     let env = Arc::new(Environment { domain: Colag::default() });
@@ -80,32 +81,40 @@ fn main(){
     ];
     let mut handles = Vec::new();
     let maps = Arc::new(maps);
+    let mut languages: Vec<Grammar> = env.domain.language.
+        keys()
+        .cloned()
+        .flat_map(|x| vec![x; 100])
+        .collect();
+    let languages = Arc::new(Mutex::new(languages));
     for _ in 0..40 {
         let maps = maps.clone();
         let env = env.clone();
+        let languages = languages.clone();
         handles.push(thread::spawn(move|| {
             // for target in env.domain.language.keys() {
-            for target in LANGUAGES.iter() {
-                for _ in 0..25 {
-                    let mut speaker = UniformRandomSpeaker::new(&env.domain, *target);
-                    let mut learners = maps.iter().map(|&(ref name, ref tmap)|
-                                                       learner::RewardOnlyRelevantVL::new(name, &tmap));
-                    let mut learner = learner::RewardOnlyVL::new();
-                    let consumed = learn_language(5_000_000, &env, &mut speaker, &mut learner);
-                    let guess = learner.guess();
-                    if let Theory::Weighted(weights) = learner.theory(){
-                        println!("RewardOnlyVL, {}, {}, {}, {}", target, consumed, guess, weights);
+            // for target in LANGUAGES.iter() {
+            loop {
+                let mut target = {
+                    let mut t = languages.lock().unwrap();
+                    if let Some(v) = t.pop(){
+                        v
+                    } else {
+                        break;
                     }
-                    // for mut learner in learners {
-                    //     let consumed = learn_language(5_000_000, &env, &mut speaker, &mut learner);
-                    //     let guess = learner.guess();
-                    //     if let Theory::Weighted(weights) = learner.theory(){
-                    //         println!("{}, {}, {}, {}, {}", learner, target, consumed, guess, weights);
-                    //     }
-                    // }
+                };
+                let mut speaker = UniformRandomSpeaker::new(&env.domain, target);
+                let mut learners = maps.iter().map(|&(ref name, ref tmap)|
+                                                   learner::RewardOnlyRelevantVL::new(name, &tmap));
+                let mut learner = learner::RewardOnlyVL::new();
+                let consumed = learn_language(5_000_000, &env, &mut speaker, &mut learner);
+                let guess = learner.guess();
+                if let Theory::Weighted(weights) = learner.theory(){
+                    println!("RewardOnlyVL, {}, {}, {}, {}", target, consumed, guess, weights);
                 }
             }
         }));
+
     }
     for h in handles {
         h.join();
