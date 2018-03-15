@@ -21,7 +21,7 @@ pub trait LanguageDomain {
     fn surface_form(&self, g: &Sentence) -> &SurfaceForm;
     fn triggers(&self, &Sentence) -> &TriggerVec;
     fn parses(&self, &Grammar, &Sentence) -> Result<bool, IllegalGrammar>;
-    fn random_grammar(&self, rng: &mut XorShiftRng) -> &Grammar;
+    fn random_grammar<T: Rng>(&self, rng: &mut T) -> &Grammar;
 }
 
 #[derive(Debug)]
@@ -66,7 +66,7 @@ impl LanguageDomain for Colag {
     fn surface_form(&self, s: &Sentence) -> &SurfaceForm {
         self.surface_form.get(s).unwrap()
     }
-    fn random_grammar(&self, rng: &mut XorShiftRng) -> &Grammar {
+    fn random_grammar<T: Rng>(&self, rng: &mut T) -> &Grammar {
         rng.choose(&self.grammars).unwrap()
     }
 }
@@ -91,7 +91,7 @@ impl Colag {
             .unwrap()
     }
 
-    pub fn random_weighted_grammar(rng: &mut XorShiftRng,
+    pub fn random_weighted_grammar<T: Rng>(rng: &mut T,
                                    weights: &[f64; NUM_PARAMS]) -> Grammar {
         let mut grammar = 0;
         for param in 0..NUM_PARAMS {
@@ -254,7 +254,7 @@ fn set_param(grammar: Grammar, param_num: usize) -> Grammar {
 }
 
 /// Returns true `weight` percent of the time
-fn weighted_coin_flip(rng: &mut XorShiftRng, weight: f64) -> bool {
+fn weighted_coin_flip<T: Rng>(rng: &mut T, weight: f64) -> bool {
     debug_assert!((weight >= 0.) & (weight <= 1.));
     let mut range = Range::new(0., 1.);
     range.sample(rng) < weight

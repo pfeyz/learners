@@ -1,3 +1,5 @@
+extern crate mersenne_twister;
+
 use std::mem;
 use std::fmt;
 use learner::{Learner, Environment};
@@ -7,7 +9,12 @@ use hypothesis::{WeightedHypothesis, Theory};
 use triggers::{TriggerMap};
 
 use rand;
-use rand::XorShiftRng;
+use rand::{XorShiftRng, StdRng, ThreadRng, ChaChaRng, SeedableRng, Rng};
+
+use self::mersenne_twister::MersenneTwister;
+use std::default::Default;
+
+type RngType = MersenneTwister;
 
 const LEARNING_RATE: f64 = 0.001;
 const THRESHOLD: f64 = 0.02;
@@ -16,16 +23,21 @@ const THRESHOLD: f64 = 0.02;
 
 pub struct RewardOnlyVL {
     hypothesis: WeightedHypothesis,
-    rng: rand::XorShiftRng,
+    rng: RngType,
 }
 
 impl RewardOnlyVL {
     pub fn new() -> RewardOnlyVL {
+        let mut seed = rand::thread_rng();
         RewardOnlyVL { hypothesis: WeightedHypothesis::new(),
-                       rng: rand::weak_rng() }
+                       rng: MersenneTwister::from_seed(seed.next_u64()) }
     }
     pub fn boxed() -> Box<Learner> {
         Box::new(RewardOnlyVL::new())
+    }
+
+    pub fn guess(&mut self) -> Grammar {
+        Colag::random_weighted_grammar(&mut self.rng, &self.hypothesis.weights)
     }
 
     fn reward(&mut self, _: &Environment, gram: &Grammar, _: &Sentence){
@@ -81,7 +93,7 @@ pub struct RewardOnlyRelevantVL<'a> {
     trigger_map: &'a TriggerMap,
     activated: [u32; NUM_PARAMS], // indicates if a weight has ever been adjusted
     consumed: u64,
-    rng: rand::XorShiftRng,
+    rng: RngType
 }
 
 impl<'a> fmt::Display for RewardOnlyRelevantVL<'a> {
@@ -97,7 +109,11 @@ impl<'a> RewardOnlyRelevantVL<'a> {
                                activated: [0; NUM_PARAMS],
                                name: name.to_string(),
                                consumed: 0,
-                               rng: rand::weak_rng() }
+                               rng: Default::default() }
+    }
+
+    pub fn guess(&mut self) -> Grammar {
+        Colag::random_weighted_grammar(&mut self.rng, &self.hypothesis.weights)
     }
 
     fn reward(&mut self, env: &Environment, gram: &Grammar, sent: &Sentence){
