@@ -69,12 +69,12 @@ enum SS {
   Adv_(FeatureSetting2)
 }
 
-pub static ADV: SurfaceSymbol = SurfaceSymbol::Adv_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
+pub static Adv: SurfaceSymbol = SurfaceSymbol::Adv_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
 pub static O1: SurfaceSymbol = SurfaceSymbol::O1_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
 pub static O2: SurfaceSymbol = SurfaceSymbol::O2_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
 pub static O3: SurfaceSymbol = SurfaceSymbol::O3_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
-pub static PRO: SurfaceSymbol = SurfaceSymbol::P_ { wa: FeatureVal::Any };
-pub static SUB: SurfaceSymbol = SurfaceSymbol::S_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
+pub static P: SurfaceSymbol = SurfaceSymbol::P_ { wa: FeatureVal::Any };
+pub static S: SurfaceSymbol = SurfaceSymbol::S_ { wh: FeatureVal::Any, wa: FeatureVal::Any };
 
 use self::SurfaceSymbol::*;
 
@@ -243,7 +243,7 @@ impl SurfaceForm {
         if let Some(o1_index) = self.index(&O1){
             if let Some(o2_index) = self.index(&O2){
                 if let Some(o3_index) = self.index(&O3){
-                    if let Some(pro_index) = self.index(&PRO){
+                    if let Some(pro_index) = self.index(&P){
                         if o1_index < o2_index && o2_index < pro_index && pro_index == o3_index - 1 {
                             return false
                         } else if o3_index < o2_index && o2_index < o1_index && o3_index == pro_index - 1 {

@@ -105,9 +105,9 @@ impl NonDefaultsLearner {
         use sentence::*;
         if form.illoc != Illoc::Dec {
             None
-        } else if !form.topicalized(&O1) && form.order(&O1, &SUB){
+        } else if !form.topicalized(&O1) && form.order(&O1, &S){
             Some(Op::Update(Param::SP, Rate::Normal, true))
-        } else if !form.topicalized(&SUB) && form.order(&SUB, &O1) {
+        } else if !form.topicalized(&S) && form.order(&S, &O1) {
             Some(Op::Update(Param::SP, Rate::Normal, false))
         } else {
             None
@@ -117,10 +117,10 @@ impl NonDefaultsLearner {
     fn head_ip(&self, form: &SurfaceForm) -> Option<Op> {
         use sentence::*;
         use sentence::SurfaceSymbol::*;
-        if form.contains(&O3) & form.contains(&PRO){
-            if !form.topicalized(&O3) & form.adjacent(&O3, &PRO) {
+        if form.contains(&O3) & form.contains(&P){
+            if !form.topicalized(&O3) & form.adjacent(&O3, &P) {
                 return Some(Op::Update(Param::HIP, Rate::Normal, true));
-            } else if !form.topicalized(&O3) & form.adjacent(&PRO, &O3) {
+            } else if !form.topicalized(&O3) & form.adjacent(&P, &O3) {
                 return Some(Op::Update(Param::HIP, Rate::Normal, false));
             }
         }
@@ -160,13 +160,12 @@ impl NonDefaultsLearner {
 
     // TODO: the python checks for membership in sentence string, not list
     fn null_subject(&self, form: &SurfaceForm) -> Option<Op> {
-        use sentence::*;
-        use sentence::SurfaceSymbol::{SUB};
+        use sentence::{S};
 
-        if (form.illoc == Illoc::Dec) & !form.contains(&SUB) & form.out_oblique(){
+        if (form.illoc == Illoc::Dec) & !form.contains(&S) & form.out_oblique(){
             Some(Op::Update2((Param::NS, Rate::Normal, true),
                              (Param::OPT, Rate::Normal, true)))
-        } else if (form.illoc == Illoc::Dec) & form.contains(&SUB) & form.out_oblique() {
+        } else if (form.illoc == Illoc::Dec) & form.contains(&S) & form.out_oblique() {
             Some(Op::Update(Param::NS, Rate::Conservative, false))
         } else {
             None
@@ -175,8 +174,7 @@ impl NonDefaultsLearner {
 
     // // todo: the python checks for membership in sentence string, not list
     fn null_topic(&self, form: &SurfaceForm) -> Option<Op> {
-        use sentence::*;
-        use sentence::SurfaceSymbol::{O1, O2, O3, Sub, ADV};
+        use sentence::{O1, O2, O3, S, Adv};
 
         if (form.illoc == Illoc::Dec) && form.contains(&O2) && !form.contains(&O1) {
             Some(Op::Update2((Param::NT, Rate::Normal, true), (Param::OPT, Rate::Normal, false)))
@@ -185,8 +183,8 @@ impl NonDefaultsLearner {
                  && form.contains(&O1)
                  && form.contains(&O2)
                  && form.contains(&O3)
-                 && form.contains(&SUB)
-                 && form.contains(&ADV) {
+                 && form.contains(&S)
+                 && form.contains(&Adv) {
             Some(Op::Update(Param::NT, Rate::Conservative, false))
         } else {
             None
@@ -197,13 +195,13 @@ impl NonDefaultsLearner {
         use sentence::FeatureType::WH;
         use sentence::FeatureVal::*;
         use sentence::SurfaceSymbol::{O3_};
-        use sentence::PRO;
+        use sentence::P;
         let has_wh = form.words.iter().any(|w| w.has_feature(&WH));
 
         if form.illoc == Illoc::Q && has_wh {
             if form.words[0].has_feature(&WH)
 
-                | form.starts_with(&[&PRO, &O3_ {wh: True, wa: Any}]) {
+                | form.starts_with(&[&P, &O3_ {wh: True, wa: Any}]) {
                     Some(Op::Update(Param::WHM, Rate::Conservative, true))
                 } else {
                     Some(Op::Update(Param::WHM, Rate::Normal, false))
