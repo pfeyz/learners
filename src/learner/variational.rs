@@ -1,4 +1,3 @@
-use std::mem;
 use std::fmt;
 use learner::{Learner, Environment};
 use domain::{Grammar, Sentence, NUM_PARAMS, LanguageDomain, Colag, get_param, Trigger};
@@ -7,7 +6,7 @@ use hypothesis::{WeightedHypothesis, Theory};
 use triggers::{TriggerMap};
 
 use rand;
-use rand::{XorShiftRng, StdRng, ThreadRng, ChaChaRng, SeedableRng, Rng};
+use rand::{SeedableRng, Rng};
 
 use mersenne_twister::MersenneTwister;
 use std::default::Default;
@@ -185,7 +184,6 @@ impl<'a> Learner for RewardOnlyRelevantVL<'a> {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use rand::{Rng, thread_rng};
     use learner::{RewardOnlyVL, RewardOnlyRelevantVL, Learner, Environment};
     use domain::{Colag, LanguageDomain, Sentence, Grammar};
     use speaker::{UniformRandomSpeaker};

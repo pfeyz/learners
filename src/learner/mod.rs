@@ -1,5 +1,5 @@
 use hypothesis::{Theory};
-use domain::{Sentence, Colag, LanguageDomain};
+use domain::{Sentence, Colag};
 
 pub mod trigger;
 pub mod variational;

@@ -3,7 +3,6 @@ use domain::{Sentence, IllegalGrammar, LanguageDomain};
 use hypothesis::{SimpleHypothesis, Theory};
 
 use rand;
-use rand::{Rng};
 
 pub struct TriggerLearner {
     hypothesis: SimpleHypothesis,
@@ -54,9 +53,8 @@ impl TriggerLearner {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use rand::{Rng, thread_rng};
     use learner::{TriggerLearner, Learner, Environment};
-    use domain::{Colag, LanguageDomain, Sentence, Grammar};
+    use domain::{Colag};
     use speaker::{UniformRandomSpeaker};
 
     #[bench]

@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use learner::{Learner, Environment};
 use hypothesis::{WeightedHypothesis, Theory};
 use sentence::{SurfaceForm, Illoc};
@@ -162,7 +161,7 @@ impl NonDefaultsLearner {
     // TODO: the python checks for membership in sentence string, not list
     fn null_subject(&self, form: &SurfaceForm) -> Option<Op> {
         use sentence::*;
-        use sentence::SurfaceSymbol::*;
+        use sentence::SurfaceSymbol::{SUB};
 
         if (form.illoc == Illoc::Dec) & !form.contains(&SUB) & form.out_oblique(){
             Some(Op::Update2((Param::NS, Rate::Normal, true),
@@ -177,17 +176,17 @@ impl NonDefaultsLearner {
     // // todo: the python checks for membership in sentence string, not list
     fn null_topic(&self, form: &SurfaceForm) -> Option<Op> {
         use sentence::*;
-        use sentence::SurfaceSymbol::*;
+        use sentence::SurfaceSymbol::{O1, O2, O3, Sub, ADV};
 
         if (form.illoc == Illoc::Dec) && form.contains(&O2) && !form.contains(&O1) {
             Some(Op::Update2((Param::NT, Rate::Normal, true), (Param::OPT, Rate::Normal, false)))
         }
-        else if ((form.illoc == Illoc::Dec)
+        else if (form.illoc == Illoc::Dec)
                  && form.contains(&O1)
                  && form.contains(&O2)
                  && form.contains(&O3)
                  && form.contains(&SUB)
-                 && form.contains(&ADV)){
+                 && form.contains(&ADV) {
             Some(Op::Update(Param::NT, Rate::Conservative, false))
         } else {
             None
@@ -222,9 +221,8 @@ impl NonDefaultsLearner {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use rand::{Rng, thread_rng};
     use learner::{NonDefaultsLearner, Learner, Environment};
-    use domain::{Colag, LanguageDomain, Sentence, Grammar};
+    use domain::{Colag};
     use speaker::{UniformRandomSpeaker};
 
     #[bench]

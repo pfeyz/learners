@@ -1,7 +1,7 @@
 extern crate csv;
 extern crate rand;
 use std::mem;
-use rand::{XorShiftRng, Rng};
+use rand::{Rng};
 use rand::distributions::{Range, Sample};
 
 use std::error::Error;
@@ -262,12 +262,9 @@ fn weighted_coin_flip<T: Rng>(rng: &mut T, weight: f64) -> bool {
 
 mod bench {
     extern crate test;
+    use domain::{LanguageDomain, Colag, NUM_PARAMS};
     use self::test::Bencher;
     use rand;
-    use rand::{Rng, thread_rng};
-    use learner::{NonDefaultsLearner, Learner, Environment};
-    use domain::{Colag, LanguageDomain, Sentence, Grammar, NUM_PARAMS};
-    use speaker::{UniformRandomSpeaker};
 
     #[bench]
     fn random_grammar(b: &mut Bencher) {

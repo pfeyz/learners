@@ -1,6 +1,5 @@
 use rand;
-use rand::{Rng, ChaChaRng, SeedableRng};
-use rand::distributions::{Range, Sample};
+use rand::{Rng, SeedableRng};
 use mersenne_twister::MersenneTwister;
 
 use domain::{Colag, LanguageDomain, Grammar, Sentence};
