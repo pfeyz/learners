@@ -1,6 +1,7 @@
 use rand;
-use rand::{Rng, XorShiftRng};
+use rand::{Rng, ChaChaRng, SeedableRng};
 use rand::distributions::{Range, Sample};
+use mersenne_twister::MersenneTwister;
 
 use domain::{Colag, LanguageDomain, Grammar, Sentence};
 
@@ -8,18 +9,19 @@ pub struct UniformRandomSpeaker<'a> {
     domain: &'a Colag,
     language: Grammar,
     sentences: &'a Vec<Sentence>,
-    rng: XorShiftRng
+    rng: MersenneTwister
 }
 
 impl<'a> UniformRandomSpeaker<'a> {
     pub fn new(domain: &'a Colag, language: Grammar) -> Self {
+        let mut rng = rand::thread_rng();
         UniformRandomSpeaker {
             domain: domain,
             language: language,
             sentences: domain
                 .language_vec(&language)
                 .expect(&format!("Illegal grammar: {}", language)),
-            rng: rand::weak_rng()
+            rng: MersenneTwister::from_seed(rng.next_u64())
         }
     }
 }

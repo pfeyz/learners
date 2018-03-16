@@ -1,5 +1,3 @@
-extern crate mersenne_twister;
-
 use std::mem;
 use std::fmt;
 use learner::{Learner, Environment};
@@ -11,7 +9,7 @@ use triggers::{TriggerMap};
 use rand;
 use rand::{XorShiftRng, StdRng, ThreadRng, ChaChaRng, SeedableRng, Rng};
 
-use self::mersenne_twister::MersenneTwister;
+use mersenne_twister::MersenneTwister;
 use std::default::Default;
 
 type RngType = MersenneTwister;
@@ -191,6 +189,7 @@ mod bench {
     use learner::{RewardOnlyVL, RewardOnlyRelevantVL, Learner, Environment};
     use domain::{Colag, LanguageDomain, Sentence, Grammar};
     use speaker::{UniformRandomSpeaker};
+    use triggers::{TriggerMap};
 
     #[bench]
     fn reward_only_vl(b: &mut Bencher) {
@@ -207,7 +206,8 @@ mod bench {
         let colag = Colag::default();
         let env = Environment { domain: colag };
         let mut speaker = UniformRandomSpeaker::new(&env.domain, 611);
-        let mut learner = RewardOnlyRelevantVL::new();
+        let triggers = TriggerMap::from_file("./data/irrelevance-output.txt").unwrap();
+        let mut learner = RewardOnlyRelevantVL::new("normal", &triggers);
         // let mut sentences: Vec<&Sentence> = speaker.take(5_000_000).collect();
         b.iter(|| learner.learn(&env, speaker.next().unwrap()));
     }
