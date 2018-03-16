@@ -106,9 +106,9 @@ impl NonDefaultsLearner {
         use sentence::*;
         if form.illoc != Illoc::Dec {
             None
-        } else if !form.topicalized(&o1) && form.order(&o1, &sub){
+        } else if !form.topicalized(&O1) && form.order(&O1, &SUB){
             Some(Op::Update(Param::SP, Rate::Normal, true))
-        } else if !form.topicalized(&sub) && form.order(&sub, &o1) {
+        } else if !form.topicalized(&SUB) && form.order(&SUB, &O1) {
             Some(Op::Update(Param::SP, Rate::Normal, false))
         } else {
             None
@@ -118,17 +118,17 @@ impl NonDefaultsLearner {
     fn head_ip(&self, form: &SurfaceForm) -> Option<Op> {
         use sentence::*;
         use sentence::SurfaceSymbol::*;
-        if form.contains(&o3) & form.contains(&pro){
-            if !form.topicalized(&o3) & form.adjacent(&o3, &pro) {
+        if form.contains(&O3) & form.contains(&PRO){
+            if !form.topicalized(&O3) & form.adjacent(&O3, &PRO) {
                 return Some(Op::Update(Param::HIP, Rate::Normal, true));
-            } else if !form.topicalized(&o3) & form.adjacent(&pro, &o3) {
+            } else if !form.topicalized(&O3) & form.adjacent(&PRO, &O3) {
                 return Some(Op::Update(Param::HIP, Rate::Normal, false));
             }
         }
-        else if (form.illoc == Illoc::Imp) & form.contains(&o1) & form.contains(&Verb){
-            if form.adjacent(&o1, &Verb) {
+        else if (form.illoc == Illoc::Imp) & form.contains(&O1) & form.contains(&Verb){
+            if form.adjacent(&O1, &Verb) {
                 return Some(Op::Update(Param::HIP, Rate::Normal, true));
-            } else if form.adjacent(&o1, &Verb){
+            } else if form.adjacent(&O1, &Verb){
                 return Some(Op::Update(Param::HIP, Rate::Normal, false));
             }
         }
@@ -164,10 +164,10 @@ impl NonDefaultsLearner {
         use sentence::*;
         use sentence::SurfaceSymbol::*;
 
-        if (form.illoc == Illoc::Dec) & !form.contains(&sub) & form.out_oblique(){
+        if (form.illoc == Illoc::Dec) & !form.contains(&SUB) & form.out_oblique(){
             Some(Op::Update2((Param::NS, Rate::Normal, true),
                              (Param::OPT, Rate::Normal, true)))
-        } else if (form.illoc == Illoc::Dec) & form.contains(&sub) & form.out_oblique() {
+        } else if (form.illoc == Illoc::Dec) & form.contains(&SUB) & form.out_oblique() {
             Some(Op::Update(Param::NS, Rate::Conservative, false))
         } else {
             None
@@ -179,15 +179,15 @@ impl NonDefaultsLearner {
         use sentence::*;
         use sentence::SurfaceSymbol::*;
 
-        if (form.illoc == Illoc::Dec) && form.contains(&o2) && !form.contains(&o1) {
+        if (form.illoc == Illoc::Dec) && form.contains(&O2) && !form.contains(&O1) {
             Some(Op::Update2((Param::NT, Rate::Normal, true), (Param::OPT, Rate::Normal, false)))
         }
         else if ((form.illoc == Illoc::Dec)
-                 && form.contains(&o1)
-                 && form.contains(&o2)
-                 && form.contains(&o3)
-                 && form.contains(&sub)
-                 && form.contains(&adv)){
+                 && form.contains(&O1)
+                 && form.contains(&O2)
+                 && form.contains(&O3)
+                 && form.contains(&SUB)
+                 && form.contains(&ADV)){
             Some(Op::Update(Param::NT, Rate::Conservative, false))
         } else {
             None
@@ -197,13 +197,14 @@ impl NonDefaultsLearner {
     fn wh_movement(&self, form: &SurfaceForm) -> Option<Op> {
         use sentence::FeatureType::WH;
         use sentence::FeatureVal::*;
-        use sentence::SurfaceSymbol::{O3};
-        use sentence::pro;
+        use sentence::SurfaceSymbol::{O3_};
+        use sentence::PRO;
         let has_wh = form.words.iter().any(|w| w.has_feature(&WH));
 
         if form.illoc == Illoc::Q && has_wh {
             if form.words[0].has_feature(&WH)
-                | form.starts_with(&[&pro, &O3 {wh: True, wa: Any}]) {
+
+                | form.starts_with(&[&PRO, &O3_ {wh: True, wa: Any}]) {
                     Some(Op::Update(Param::WHM, Rate::Conservative, true))
                 } else {
                     Some(Op::Update(Param::WHM, Rate::Normal, false))
