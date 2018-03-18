@@ -36,7 +36,6 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use rand::{Rng, thread_rng};
-    use learner::{NonDefaultsLearner, Learner, Environment};
     use domain::{Colag, LanguageDomain, Sentence, Grammar, NUM_PARAMS};
     use speaker::{UniformRandomSpeaker};
 

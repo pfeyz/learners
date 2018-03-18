@@ -3,18 +3,16 @@
 extern crate rand;
 extern crate mersenne_twister;
 
-use rand::Rng;
-
 use std::thread;
-use std::sync::Arc;
-
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, Duration};
 
-mod domain;
-mod learner;
-mod hypothesis;
-mod sentence;
+use rand::Rng;
 
+mod domain;
+mod hypothesis;
+mod learner;
+mod sentence;
 mod speaker;
 mod triggers;
 
@@ -26,9 +24,7 @@ use triggers::{TriggerMap};
 
 type LearnerFactory = fn() -> Box<Learner>;
 
-fn learn_language<'a>(num_sentences: usize, env: &Environment, speaker: &mut UniformRandomSpeaker,
-                      learner: &mut Learner)
-                  -> usize {
+fn learn_language<'a>(num_sentences: usize, env: &Environment, speaker: &mut UniformRandomSpeaker, learner: &mut Learner) -> usize {
     for (consumed, sent) in speaker.into_iter().take(num_sentences).enumerate() {
         learner.learn(env, sent);
         if learner.converged() {
@@ -37,49 +33,41 @@ fn learn_language<'a>(num_sentences: usize, env: &Environment, speaker: &mut Uni
     }
     num_sentences
 }
-fn watch_learner<'a>(name: &str, id: u64, num_sentences: &u64, env: &Environment, language: &[&Sentence], factory: LearnerFactory) {
-    let mut learner = factory();
-    let mut rng = rand::thread_rng();
-    for n in 0..*num_sentences {
-        let sent = rng.choose(language).unwrap();
-        learner.learn(env, sent);
-        if n % (num_sentences / 100) == 0 || learner.converged() {
-            match learner.theory() {
-                Theory::Simple(h) => println!("{}, {}, {}, {}, ", name, id, n, h),
-                Theory::Weighted(h) => println!("{}, {}, {}, {},", name, id, n, h)
-            }
-        }
-        if learner.converged() {
-            break;
-        }
+
+fn learner_report(learner: &mut learner::Learner, target: &Grammar, name: &str, consumed: usize) {
+    let guess = learner.guess();
+    match learner.theory() {
+        Theory::Simple(h) => println!("{}, {}, {}, {}, {}, {}", learner, target, guess, name, consumed, h),
+        Theory::Weighted(h) => println!("{}, {}, {}, {}, {}, {}", learner, target, guess, name, consumed, h)
     }
 }
 
-// fn get_learner_factory(name: &str) -> Option<LearnerFactory> {
-//     match name {
-//         "tla" => Some(learner::TriggerLearner::boxed),
-//         "rovl" => Some(learner::RewardOnlyVL::boxed),
-//         "rorvl" => Some(learner::RewardOnlyRelevantVL::boxed),
-//         "ndl" => Some(learner::NonDefaultsLearner::boxed),
-//         _ => None
-//     }
-// }
+fn watch_language<'a>(name: &str, num_sentences: usize, target: u16, env: &Environment, speaker: &mut UniformRandomSpeaker, learner: &mut learner::Learner) {
+    for (consumed, sent) in speaker.into_iter().take(num_sentences).enumerate() {
+        learner.learn(env, sent);
+        if learner.converged() || consumed == num_sentences - 1 {
+            learner_report(learner, &target, name, consumed);
+            break;
+        }
+        if consumed % 5000 != 0 {
+            continue;
+        }
+        learner_report(learner, &target, name, consumed);
+    }
+}
 
 fn to_secs(duration: Duration) -> f64 {
-    duration.as_secs() as f64
-        + duration.subsec_nanos() as f64 * 1e-9
+    duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9
 }
-static LANGUAGES: [u16; 4] = [611, 3856, 2253, 584];
+static LANGUAGES: [u16; 1] = [611];
 // static LANGUAGES: [u16; 1] = [611];
 
-use std::sync::{Mutex};
-
-fn main(){
+fn vl_simulation(){
     let env = Arc::new(Environment { domain: Colag::default() });
     let maps = [
         ("normal", TriggerMap::from_file("data/irrelevance-output.txt").unwrap()),
-        ("equiv", TriggerMap::from_file("data/irrelevance-output-no-equiv.txt").unwrap()),
-        ("super", TriggerMap::from_file("data/irrelevance-output-no-superset.txt").unwrap()),
+        // ("equiv", TriggerMap::from_file("data/irrelevance-output-no-equiv.txt").unwrap()),
+        // ("super", TriggerMap::from_file("data/irrelevance-output-no-superset.txt").unwrap()),
     ];
     let mut handles = Vec::new();
     let maps = Arc::new(maps);
@@ -87,10 +75,11 @@ fn main(){
         .flat_map(|x| vec![x; 100])
         .collect();
     let languages = Arc::new(Mutex::new(languages));
-    for _ in 0..4 {
+    for thread_id in 0..4 {
         let maps = maps.clone();
         let env = env.clone();
         let languages = languages.clone();
+        let mut iteration = 0;
         handles.push(thread::spawn(move|| {
             // for target in env.domain.language.keys() {
             // for target in LANGUAGES.iter() {
@@ -103,14 +92,26 @@ fn main(){
                     }
                 };
                 let mut speaker = UniformRandomSpeaker::new(&env.domain, target);
-                // let mut learners = maps.iter().map(|&(ref name, ref tmap)|
-                //                                    learner::RewardOnlyRelevantVL::new(name, &tmap));
-                let mut learner = learner::RewardOnlyVL::new();
-                let consumed = learn_language(5_000_000, &env, &mut speaker, &mut learner);
-                let guess = learner.guess();
-                if let Theory::Weighted(weights) = learner.theory(){
-                    println!("RewardOnlyVL, {}, {}, {}, {}", target, consumed, guess, weights);
+                // let mut learner = learner::RewardOnlyVL::new();
+                // watch_language(&format!("{}:{}", &thread_id.to_string(), &iteration.to_string()),
+                //                10_000_000, target, &env, &mut speaker, &mut learner);
+                // iteration += 1;
+                for &(ref name, ref trigger_map) in maps.iter() {
+                    for rate in [0., 0.1, 0.25, 0.3, 0.33, 0.4, 0.45, 0.5, 0.75, 1.0].iter().cloned() {
+                        let mut learner = learner::RewardOnlyRelevantVL::new(name, &trigger_map, rate);
+                        // watch_language(&format!("{}:{}", &thread_id.to_string(), &iteration.to_string()),
+                        //                10_000_000, target, &env, &mut speaker, &mut learner);
+                        let consumed = learn_language(10_000_000, &env, &mut speaker, &mut learner);
+                        learner_report(&mut learner, &target, "", consumed);
+                        iteration += 1;
+                    }
                 }
+                // let mut learner = learner::RewardOnlyRelevantVL::new("super", &map);
+                // let consumed = learn_language(5_000_000, &env, &mut speaker, &mut learner);
+                // let guess = learner.guess();
+                // if let Theory::Weighted(weights) = learner.theory(){
+                //     println!("{}, {}, {}, {}, {}", learner, target, consumed, guess, weights);
+                // }
             }
         }));
 
@@ -120,45 +121,6 @@ fn main(){
     }
 }
 
-// fn mainx() {
-//     let env = Arc::new(Environment { domain: Colag::default() });
-//     let mut handles = Vec::new();
-//     let start = SystemTime::now();
-//     for _ in 0..4 {
-//         let env = env.clone();
-//         handles.push(thread::spawn(move|| {
-//             for target in vec![611, 3856, 2253, 584]{
-//                 let mut rng = rand::weak_rng();
-//                 let mut speaker = UniformRandomSpeaker::new(&env.domain, target);
-//                     // for name in vec!["ndl", "vl", "rovl", "tla"]{
-//                     for name in vec!["rorvl", "rovl"]{
-//                         for iter in 0..25 {
-//                         if let Some(factory) = get_learner_factory(&name) {
-//                             // watch_learner(name, iter, &500_000, &env, &language[..], factory);
-//                             let start = SystemTime::now();
-//                             let mut learner = factory();
-//                             let consumed = learn_language(5_000_000, &env, &mut speaker, &mut *learner);
-//                             let secs = to_secs(SystemTime::now().duration_since(start).unwrap());
-//                             match learner.theory() {
-//                                 Theory::Simple(h) => println!("{}, {}, {}, {}, {}", name, consumed, target, h, secs),
-//                                 Theory::Weighted(hypo) => println!("{}, {}, {}, {}, {}, {}",
-//                                                                       name,
-//                                                                       consumed,
-//                                                                       target,
-//                                                                       Colag::random_weighted_grammar(&mut rng, &hypo.weights),
-//                                                                       hypo,
-//                                                                       secs)
-//                             }
-//                         } else {
-//                             eprintln!("`{}` is not a valid learner name", name);
-//                         }
-//                     }
-//                 }
-//             }
-//         }));
-//     }
-//     for h in handles {
-//         h.join();
-//     }
-//     println!("{:?}", SystemTime::now().duration_since(start));
-// }
+fn main(){
+    vl_simulation();
+}
